@@ -2,7 +2,22 @@
   "permissions": {
     "allow": [
       "Bash(npm --version)",
-      "Bash(npx --yes create-next-app@latest . --ts --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-npm --no-turbopack --yes)"
+      "Bash(npx --yes create-next-app@latest . --ts --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-npm --no-turbopack --yes)",
+      "Bash(npm run *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm dev *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"home %{http_code}\\\\n\" http://localhost:3001)",
+      "Bash(curl -s -o /dev/null -w \"mapa %{http_code}\\\\n\" http://localhost:3001/mapa)",
+      "Bash(curl -s -o /dev/null -w \"\\\\nhome %{http_code}\\\\n\" http://localhost:3001)",
+      "Bash(lsof -ti:3000 -ti:3001)",
+      "Read(//tmp/**)",
+      "Bash(lsof -ti:3000)",
+      "Bash(pkill -f \"next dev\")"
     ]
   }
 }

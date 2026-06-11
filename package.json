@@ -9,6 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@fontsource/anton": "^5.2.7",
+    "@fontsource/archivo": "^5.2.8",
+    "@fontsource/shrikhand": "^5.2.8",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4"

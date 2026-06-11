@@ -1,26 +1,97 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  --color-night: #140e1b;
+  --color-night-deep: #0c0812;
+  --color-mango: #ffb03a;
+  --color-flame: #ff5a36;
+  --color-rosa: #ff2e63;
+  --color-mar: #2ec4b6;
+  --color-hueso: #f6ecd9;
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-call: "Shrikhand", "Georgia", serif;
+  --font-body: "Archivo", "Helvetica Neue", sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-night);
+  color: var(--color-hueso);
+  overflow-x: hidden;
+}
+
+/* ---- animations ---- */
+
+@keyframes call-in {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.9) rotate(-2.5deg);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-5px) scale(1.04) rotate(0.75deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes beat-pop {
+  0% {
+    transform: scale(0.82);
+  }
+  55% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slow-sway {
+  0%,
+  100% {
+    transform: translate(-2%, -1%) rotate(-1deg);
+  }
+  50% {
+    transform: translate(2%, 1%) rotate(1deg);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.3s ease-out both;
+}
+
+.animate-call-in {
+  animation: call-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.animate-beat-pop {
+  animation: beat-pop 0.18s ease-out both;
+}
+
+.animate-slow-sway {
+  animation: slow-sway 18s ease-in-out infinite;
+}
+
+/* glow for the active count */
+.count-glow {
+  text-shadow:
+    0 0 18px rgba(255, 176, 58, 0.85),
+    0 0 60px rgba(255, 90, 54, 0.5);
+}
+
+.call-glow {
+  filter: drop-shadow(0 0 26px rgba(255, 46, 99, 0.35));
 }
