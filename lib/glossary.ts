@@ -1,9 +1,9 @@
 /**
  * Documentación de figuras: qué significan y en qué hub terminan.
  *
- * En la rueda todo descansa en dos hubs: `Básico` y `Guapeala`. Cada figura
- * "termina en" uno de ellos — ahí es donde quedas parado y desde donde sale
- * la siguiente. Esto es lo que la gente lee en la app para aprender.
+ * En la rueda todo descansa en dos hubs: `Básico` y `Guapeala`. El glossary
+ * describe qué es la figura y dónde queda físicamente. Las rutas reales
+ * ("viene de" / "va a") salen del mapa de conexiones en `connections.ts`.
  */
 
 export const HUBS = ["Básico", "Guapeala"] as const;
@@ -87,6 +87,7 @@ export const FIGURE_DOC: Record<string, FigureDoc> = {
     note: "Lo contrario de Arriba: las personas líderes se mueven hacia abajo (abriendo el círculo) y las que siguen hacia atrás, manteniendo el básico. 1×8.",
   },
   Tarro: {
+    endsAt: "Básico",
     note: "Cambio de pareja en posición cerrada. La persona líder alza su mano izquierda y la persona que sigue conecta su mano derecha a esa mano. Hace un triángulo: primeros 3 pasos hacia la izquierda y los siguientes 3 hacia la derecha, pasando así a la persona que sigue al siguiente líder. 1×8.",
   },
   "Pa dentro pa fuera": {
@@ -144,16 +145,22 @@ export const FIGURE_DOC: Record<string, FigureDoc> = {
   // ── Dames ─────────────────────────────────────────────
   Dame: {
     endsAt: "Básico",
+    implies: "Dile que no",
     note: "Desde Guapeala, la persona que sigue deja su mano izquierda para que la persona líder coloque su mano derecha en su omóplato. La persona que sigue pone su mano en el hombro del líder. En esta posición cerrada, la persona líder se acerca a la siguiente pareja y hacen un Dile que no. 1×8.",
   },
   "Dame una arriba": {
     endsAt: "Básico",
+    implies: "Dile que no",
     note: "Dame cerrando la rueda. Igual que el Dame pero la persona líder y su nueva pareja quedan más cerca del centro. 1×8.",
   },
   "Dame dos": {
+    endsAt: "Básico",
+    implies: "Dile que no",
     note: "Se deja la pareja actual. La persona que sigue pasa una persona por delante (por adentro del círculo), llegando a la segunda persona que sigue. La persona líder se acerca y hacen un Dile que no, encontrando el ritmo para terminarlo juntos. 1×8.",
   },
   "Dame dos y una afuera": {
+    endsAt: "Básico",
+    implies: "Dile que no",
     note: "Comienza con Dame dos: se pasa la primera persona, luego la persona líder sale del círculo mientras la persona que sigue va por adentro. Después la persona líder vuelve hacia la tercera persona y la persona que sigue regresa a la posición del círculo. Cierran con un Dile que no. 1×8.",
   },
 
@@ -243,6 +250,15 @@ export const FIGURE_DOC: Record<string, FigureDoc> = {
   // ── Patineta ──────────────────────────────────────────
   Patineta: {
     endsAt: "Guapeala",
+    note: "Desde Patineta solo se puede seguir con Cambio, Se fue o Dame; ninguna otra figura sale de ahí. 1×8.",
+  },
+  Cambio: {
+    note: "En Patineta el líder pasa al frente. El Cambio invierte: hace que la persona que sigue (folly) pase al frente y el líder quede atrás.",
+  },
+  "Se fue": {
+    endsAt: "Guapeala",
+    implies: "Dile que no",
+    note: "Depende de quién va al frente. Con el líder al frente (Patineta): es como una enchufla para el hombre, después una mira la bonita con las manos unidas, se termina en sombrero y luego Dile que no. Con la persona que sigue al frente (tras el Cambio): es una enchufla para ella, después un final en sombrero y Dile que no. Termina en Guapeala.",
   },
 
   // ── Tijera simple ─────────────────────────────────────

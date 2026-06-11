@@ -5,7 +5,9 @@ import {
   addFigure,
   canvasBounds,
   graphFigures,
+  incomingNeighbours,
   isCustomFigure,
+  neighbours,
   NODE_SIZE,
   removeFigure,
   type ConnectionGraph,
@@ -136,6 +138,7 @@ export default function BubbleGraph({
   const [hoverEdge, setHoverEdge] = useState<number | null>(null);
   const [confirmEdge, setConfirmEdge] = useState<number | null>(null);
   const [newName, setNewName] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [selectedFigure, setSelectedFigure] = useState<string | null>(null);
   const [selectedFigures, setSelectedFigures] = useState<Set<string>>(
     () => new Set(),
@@ -500,59 +503,79 @@ export default function BubbleGraph({
     docFigure !== null
       ? (notes[docFigure] ?? doc?.note ?? "")
       : "";
+  const docIncoming = docFigure ? incomingNeighbours(graph, docFigure) : [];
+  const docOutgoing = docFigure ? neighbours(graph, docFigure) : [];
 
   return (
     <div className="relative h-full">
       <div ref={containerRef} className="h-full overflow-auto">
-      {/* floating toolbar (only while editing) */}
-      {editing && (
-        <div className="sticky top-0 z-30 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-white/10 bg-night-deep/70 px-4 py-2 text-xs backdrop-blur">
-          <div className="flex items-center gap-2">
-            <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") addNewFigure();
-              }}
-              placeholder="nueva figura…"
-              className="w-36 rounded-full border border-white/15 bg-transparent px-3 py-1 text-hueso outline-none placeholder:text-hueso/30 focus:border-mango/60"
-            />
-            <button
-              onClick={addNewFigure}
-              className="rounded-full border border-mango/50 bg-mango/10 px-3 py-1 text-mango transition-colors hover:bg-mango/20"
-            >
-              + figura
-            </button>
+      {/* gear menu — opciones (siempre disponible; la edición ya está activa) */}
+      <div className="absolute top-3 right-3 z-40">
+        <button
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="Opciones"
+          className={[
+            "flex size-10 items-center justify-center rounded-full border text-lg backdrop-blur transition-colors",
+            menuOpen
+              ? "border-mango/60 bg-mango/15 text-mango"
+              : "border-white/15 bg-night-deep/70 text-hueso/60 hover:text-hueso",
+          ].join(" ")}
+        >
+          ⚙
+        </button>
+
+        {menuOpen && (
+          <div className="absolute top-12 right-0 w-64 rounded-2xl border border-white/15 bg-night-deep/95 p-3 text-sm shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+            <p className="mb-2 px-1 text-xs tracking-[0.2em] text-hueso/40 uppercase">
+              nueva figura
+            </p>
+            <div className="mb-3 flex items-center gap-2">
+              <input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addNewFigure();
+                }}
+                placeholder="nombre…"
+                className="min-w-0 flex-1 rounded-full border border-white/15 bg-transparent px-3 py-1.5 text-hueso outline-none placeholder:text-hueso/30 focus:border-mango/60"
+              />
+              <button
+                onClick={addNewFigure}
+                className="rounded-full border border-mango/50 bg-mango/10 px-3 py-1.5 text-mango transition-colors hover:bg-mango/20"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1 border-t border-white/10 pt-2 text-hueso/70">
+              <button
+                onClick={exportGraph}
+                className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 hover:text-mar"
+              >
+                <span>exportar</span>
+                {exportStatus && (
+                  <span className="text-xs text-mar">{exportStatus}</span>
+                )}
+              </button>
+              <button
+                onClick={onResetLayout}
+                className="rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5 hover:text-mango"
+              >
+                organizar
+              </button>
+              <button
+                onClick={onClearEdges}
+                className="rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5 hover:text-rosa"
+              >
+                borrar enlaces
+              </button>
+              <p className="px-2 pt-1 text-xs text-hueso/30">
+                {graph.edges.length} enlaces
+              </p>
+            </div>
           </div>
-          <p className="hidden text-hueso/50 sm:block">
-            arrastra vacío para seleccionar · arrastra burbujas seleccionadas en grupo · clic en otra burbuja conecta
-          </p>
-          <div className="ml-auto flex gap-4 tracking-widest uppercase">
-            <span className="text-hueso/40">{graph.edges.length} enlaces</span>
-            {exportStatus && (
-              <span className="text-mar">{exportStatus}</span>
-            )}
-            <button
-              onClick={exportGraph}
-              className="text-hueso/50 transition-colors hover:text-mar"
-            >
-              exportar
-            </button>
-            <button
-              onClick={onClearEdges}
-              className="text-hueso/50 transition-colors hover:text-rosa"
-            >
-              borrar
-            </button>
-            <button
-              onClick={onResetLayout}
-              className="text-hueso/50 transition-colors hover:text-mango"
-            >
-              organizar
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div style={{ width: bounds.width * scale, height: bounds.height * scale }}>
       <div
@@ -904,6 +927,48 @@ export default function BubbleGraph({
             <span className="rounded-full border border-white/10 px-2 py-0.5 text-hueso/40">
               {durations[docFigure] ?? 1}×8
             </span>
+          </div>
+
+          <div className="mb-3 grid gap-2 text-[11px]">
+            <div>
+              <p className="mb-1 tracking-[0.18em] text-hueso/35 uppercase">
+                viene de
+              </p>
+              <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto">
+                {docIncoming.length > 0 ? (
+                  docIncoming.map((figure) => (
+                    <span
+                      key={`from-${figure}`}
+                      className="rounded-full border border-white/10 px-2 py-0.5 text-hueso/55"
+                    >
+                      {displayFigureName(figure)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-hueso/30">sin entradas</span>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-1 tracking-[0.18em] text-hueso/35 uppercase">
+                va a
+              </p>
+              <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto">
+                {docOutgoing.length > 0 ? (
+                  docOutgoing.map((figure) => (
+                    <span
+                      key={`to-${figure}`}
+                      className="rounded-full border border-mar/20 bg-mar/5 px-2 py-0.5 text-mar/65"
+                    >
+                      {displayFigureName(figure)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-hueso/30">sin salidas</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {editing ? (

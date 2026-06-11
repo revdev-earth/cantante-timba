@@ -241,6 +241,8 @@ const DEFAULT_POSITIONS: Record<string, Point> = {
   "Enchufla arriba": { x: 2479.2331080977237, y: 834.3301125070006 },
   "Enchufla doble": { x: 2205.2317554615242, y: 867.8838721415988 },
   Patineta: { x: 2720.3850417943863, y: 1395.7554935247301 },
+  Cambio: { x: 2960, y: 1470 },
+  "Se fue": { x: 3010, y: 1370 },
   "Festival de flies": { x: 1836.397820809544, y: 1601.0298068282475 },
   "70 por abajo": { x: 2795.8419300205387, y: 1195.2480476616279 },
   "70 complicada": { x: 2948.4140233001426, y: 1248.5447131082353 },
@@ -282,6 +284,7 @@ const DEFAULT_EDGES: Edge[] = [
   { from: "Básico", to: "Abajo" },
   { from: "Básico", to: "Pa dentro pa fuera" },
   { from: "Arriba", to: "Tarro" },
+  { from: "Abajo", to: "Arriba" },
   { from: "Tarro", to: "Abajo" },
   { from: "Tarro", to: "Arriba" },
   { from: "Básico", to: "Sabrosura" },
@@ -290,8 +293,6 @@ const DEFAULT_EDGES: Edge[] = [
   { from: "Básico", to: "Salúdate" },
   { from: "Básico", to: "Salúdate y dame" },
   { from: "Básico", to: "Contratiempo" },
-  { from: "Básico", to: "Americano" },
-  { from: "Básico", to: "Todos americanos" },
   { from: "Dile que sí", to: "Básico" },
   { from: "Dame", to: "Básico" },
   { from: "Camina la rueda", to: "Saluda la rueda" },
@@ -329,6 +330,10 @@ const DEFAULT_EDGES: Edge[] = [
   { from: "Guapeala", to: "Dame dos y una afuera" },
   { from: "Guapeala", to: "Dame una arriba" },
   { from: "Guapeala", to: "Patineta" },
+  { from: "Patineta", to: "Cambio" },
+  { from: "Patineta", to: "Se fue" },
+  { from: "Patineta", to: "Dame" },
+  { from: "Se fue", to: "Dile que no" },
   { from: "Dile que no", to: "Guapeala" },
   { from: "Dile que no", to: "Paséala" },
   { from: "Todos americanos", to: "Salúdate" },
@@ -592,5 +597,15 @@ export function saveGraph(graph: ConnectionGraph) {
 
 /** Outgoing neighbours of a figure. */
 export function neighbours(graph: ConnectionGraph, figure: string): string[] {
-  return graph.edges.filter((e) => e.from === figure).map((e) => e.to);
+  return [...new Set(graph.edges.filter((e) => e.from === figure).map((e) => e.to))];
+}
+
+/** Incoming neighbours of a figure: where this figure can come from. */
+export function incomingNeighbours(
+  graph: ConnectionGraph,
+  figure: string,
+): string[] {
+  return [
+    ...new Set(graph.edges.filter((e) => e.to === figure).map((e) => e.from)),
+  ];
 }

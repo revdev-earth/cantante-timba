@@ -25,6 +25,8 @@ export class LiveBeatTracker {
   bpm: number | null = null;
   /** AudioContext time of the latest strong onset. */
   lastPeakTime = 0;
+  /** Smoothed loudness 0..1 — intensidad de la canción para la UI. */
+  level = 0;
 
   private readonly ctx: AudioContext;
   private readonly analyser: AnalyserNode;
@@ -61,6 +63,11 @@ export class LiveBeatTracker {
       sum += v * v;
     }
     const rms = Math.sqrt(sum / this.timeData.length);
+
+    // intensidad: rms escalado, con ataque rápido y caída suave
+    const scaled = Math.min(1, rms * 3.2);
+    this.level =
+      scaled > this.level ? scaled : this.level * 0.88 + scaled * 0.12;
 
     const bin = Math.floor(this.ctx.currentTime * BIN_RATE);
     if (bin <= this.lastBin) {

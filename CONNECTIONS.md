@@ -31,6 +31,15 @@ descanso desde donde se arman los combos.
 Un combo es un pedacito que arranca en uno de los hubs, juega 2-3 figuras y
 vuelve a un hub.
 
+**Conectores entre hubs:** no hay flecha directa `Guapeala ↔ Básico`. El paso
+de un hub al otro siempre va por una figura conectora — de Básico a Guapeala
+con un `Dile que no`; de Guapeala a Básico con `Dame` o `Dile que sí`. El
+cantante nunca salta de un hub al otro sin un paso en el medio.
+
+**Arranque:** la rueda siempre empieza en `Básico` o `Guapeala`. El modo del
+cantante es siempre **conexiones** (camina este grafo); no hay modo aleatorio,
+porque un cantante siempre tiene en cuenta las conexiones.
+
 ## Glosario
 
 Fuente de datos: `lib/glossary.ts` (`FIGURE_DOC`). Cada figura puede tener:
@@ -42,9 +51,12 @@ Fuente de datos: `lib/glossary.ts` (`FIGURE_DOC`). Cada figura puede tener:
   (ej. Enchufla lleva el Dile que no implícito).
 - **nota**: explicación para aprender.
 
-En la app: clic en una burbuja abre su ficha (inicio / termina en / implícito /
-nota). En modo **editar** la nota es un textarea editable; se guarda en
-localStorage (`timba-figure-notes`). Así cualquiera la lee y aprende.
+En la app (`/mapa`): clic en una burbuja abre su ficha (inicio / termina en /
+implícito / nota), con la nota editable; se guarda en localStorage
+(`timba-figure-notes`). La edición del mapa está siempre activa (arrastrar,
+conectar con el ●, badges de tiempo); el icono ⚙ abre el menú con **nueva
+figura**, **exportar**, **organizar** y **borrar enlaces**. Así cualquiera la
+lee y aprende.
 
 Documentado hasta ahora:
 
@@ -59,6 +71,18 @@ Documentado hasta ahora:
 - **Cocacolita** → termina en Guapeala.
 - **Croqueta** → termina en Guapeala.
 - **Exhibela**: lucimiento de la dama desde Básico; se cierra con un Dile que no.
+- **Patineta** → termina en Guapeala. Desde Patineta **solo** se puede seguir
+  con `Cambio`, `Se fue` o `Dame`; ninguna otra figura sale de ahí. En Patineta
+  el líder pasa al frente.
+- **Cambio**: invierte la Patineta — hace que la persona que sigue (folly) pase
+  al frente y el líder quede atrás.
+- **Se fue** → termina en Guapeala · lleva implícito Dile que no. Depende de
+  quién va al frente:
+  - líder al frente (Patineta): es como una enchufla para el hombre, luego una
+    mira la bonita con las manos unidas, se termina en sombrero y va un Dile
+    que no.
+  - persona que sigue al frente (tras el Cambio): es una enchufla para ella,
+    luego un final en sombrero y Dile que no.
 - (resto: TODO — se va llenando desde la app)
 
 ## Conexiones
@@ -80,14 +104,20 @@ Va a:
 - Salúdate
 - Salúdate y dame
 - Contratiempo
-- Americano
-- Todos americanos
 
 ### Arriba / Tarro / Abajo
 
 - `Arriba` → `Tarro`
+- `Abajo` → `Arriba`
 - `Tarro` → `Arriba`
 - `Tarro` → `Abajo`
+
+Estas flechas son dirigidas: que `Tarro` pueda ir a `Abajo` no significa que
+`Abajo` pueda ir a `Tarro`. Para entrar a `Tarro`, se entra desde `Arriba`.
+
+`Tarro` no salta directo a figuras de `Guapeala` como `Directo pasando` a menos
+que esa flecha exista en el mapa; para eso normalmente primero se sale por
+`Dile que no`.
 
 ### Dile que sí
 
@@ -95,7 +125,12 @@ Llega a `Básico`.
 
 ### Dame
 
-Llega a `Básico`.
+Llega a `Básico` y lleva un `Dile que no` implícito. Aplica para:
+
+- Dame
+- Dame una arriba
+- Dame dos
+- Dame dos y una afuera
 
 ### Camina la rueda
 
@@ -206,12 +241,29 @@ Va a:
 
 - Cero la vecina
 
+### Patineta
+
+Solo va a (ninguna otra figura sale de Patineta):
+
+- Cambio
+- Se fue
+- Dame
+
+### Se fue
+
+Va a:
+
+- Dile que no
+
+(final tipo sombrero; el Dile que no la deja en Guapeala)
+
 ### Contratiempo
 
 Va a:
 
 - Americana
 - Americano
+- Todos americanos
 - Sabrosura
 
 ### Foto
@@ -226,9 +278,8 @@ figura respeta su duracion en ochos.
 Defaults en `lib/combos.ts` (`DEFAULT_COMBOS`). En la página **/combos** se
 arman/ajustan: eliges el hub de inicio (Básico o Guapeala), y el constructor
 sugiere solo las figuras conectadas desde donde estás parado (guiado por el
-grafo + termina-en). Muestra tiempos (ochos) y dónde termina. Los combos del
-usuario se guardan en localStorage (`timba-user-combos`) y entran al modo
-aleatorio.
+grafo + termina-en). Muestra tiempos (ochos) y dónde termina. Sirven como
+referencia y práctica; el cantante en sí camina el grafo de conexiones.
 
 ### Desde Guapeala (se llega con un Dile que no)
 

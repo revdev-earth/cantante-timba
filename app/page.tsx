@@ -20,7 +20,7 @@ import {
   figureDuration,
   type QueueItem,
 } from "@/lib/repertoire";
-import { figureEndsAt, START_FIGURES } from "@/lib/glossary";
+import { figureEndsAt, figureImplies, START_FIGURES } from "@/lib/glossary";
 import { loadUserCombos, type Combo } from "@/lib/combos";
 import Link from "next/link";
 
@@ -29,6 +29,27 @@ const QUEUE_LOOKAHEAD = 10;
 const DURATIONS_STORAGE_KEY = "timba-durations";
 
 type Mode = "song" | "metronome";
+
+/** Group the flat call queue back into combos (consecutive items share combo). */
+function groupUpcoming(items: QueueItem[]): string[][] {
+  const groups: string[][] = [];
+  let i = 0;
+  while (i < items.length) {
+    const combo = items[i].combo;
+    if (combo) {
+      const group: string[] = [];
+      while (i < items.length && items[i].combo === combo) {
+        group.push(items[i].figure);
+        i++;
+      }
+      groups.push(group);
+    } else {
+      groups.push([items[i].figure]);
+      i++;
+    }
+  }
+  return groups;
+}
 type PracticeMode = "random" | "graph";
 
 export default function Home() {
@@ -38,14 +59,15 @@ export default function Home() {
   const [beat, setBeat] = useState(0); // 0 = stopped
   const [bpm, setBpm] = useState(188);
   const [callEveryBars, setCallEveryBars] = useState(1);
-  const [voiceOn, setVoiceOn] = useState(true);
+  const [voiceOn, setVoiceOn] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
 
   /* calls */
   const [currentCall, setCurrentCall] = useState<string | null>(null);
   const [upcomingCall, setUpcomingCall] = useState<string | null>(null);
   const [upcoming, setUpcoming] = useState<QueueItem[]>([]);
-  const [history, setHistory] = useState<string[]>([]);
+  const [, setHistory] = useState<string[]>([]);
+  const [currentStandingAt, setCurrentStandingAt] = useState("Básico");
 
   /* repertoire */
   const [panelOpen, setPanelOpen] = useState(false);
@@ -65,15 +87,18 @@ export default function Home() {
   );
   const [durationsLoaded, setDurationsLoaded] = useState(false);
 
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>("random");
+  const practiceMode: PracticeMode = "graph";
 
   /* uploaded song */
   const [songName, setSongName] = useState<string | null>(null);
   const [songBpm, setSongBpm] = useState<number | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [autoTempo, setAutoTempo] = useState(true);
+  const [songLevel, setSongLevel] = useState(0);
 
   /* engine refs */
+  const lastLevelAtRef = useRef(0);
+  const pausedRef = useRef(false);
   const beatRef = useRef(0);
   const barRef = useRef(0);
   const nextCallBarRef = useRef(1);
@@ -91,6 +116,7 @@ export default function Home() {
   const listPositionRef = useRef(0);
   const graphRef = useRef<ConnectionGraph>(graph);
   const graphFigureRef = useRef<string | null>(null);
+  const freshStartRef = useRef(true);
   const userCombosRef = useRef<Combo[]>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -162,49 +188,34 @@ export default function Home() {
     const queue = queueRef.current;
     let guard = 0;
     while (queue.length < QUEUE_LOOKAHEAD && guard++ < 50) {
-      const mode = practiceModeRef.current;
-      if (mode === "random") {
-        const singles = FIGURES.filter(
-          (f) => enabledFiguresRef.current.has(f) && f !== lastPickRef.current,
-        );
-        // custom bubbles added on the graph are always in the random pool
-        const customs = graphFigures(graphRef.current).filter(
-          (f) => !FIGURES.includes(f) && f !== lastPickRef.current,
-        );
-        const combos = COMBOS.map(comboKey).filter(
-          (k) => enabledCombosRef.current.has(k) && k !== lastPickRef.current,
-        );
-        // combos creados por el usuario en /combos
-        const userCombos = userCombosRef.current
-          .map((c) => comboKey(c.figures))
-          .filter((k) => k !== lastPickRef.current);
-        const pool = [...singles, ...customs, ...combos, ...userCombos];
-        if (pool.length === 0) break;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        lastPickRef.current = pick;
-        queue.push(...expandItem(pick));
-      } else if (mode === "graph") {
-        const g = graphRef.current;
-        const from = graphFigureRef.current;
-        // tras una figura quedas parado en el hub donde "termina"; las
-        // siguientes salen de ahí (Enchufla → Guapeala → vueltas de Guapeala)
-        const standingAt = from ? (figureEndsAt(from) ?? from) : null;
-        const options = standingAt
-          ? neighbours(g, standingAt).filter((f) => f !== from)
-          : [];
-        let next: string;
-        if (options.length > 0) {
-          next = options[Math.floor(Math.random() * options.length)];
-        } else {
-          // dead end (o arranque): empezar desde un punto de inicio
-          const nodes = graphFigures(g);
-          const starts = START_FIGURES.filter((f) => g.positions[f]);
-          const pool = starts.length > 0 ? starts : nodes;
-          next = pool[Math.floor(Math.random() * pool.length)];
-        }
-        graphFigureRef.current = next;
-        queue.push({ figure: next });
+      // la rueda siempre arranca en un hub: Básico o Guapeala
+      if (freshStartRef.current && queue.length === 0) {
+        const starts = START_FIGURES.filter((f) => FIGURES.includes(f));
+        const startFig =
+          starts[Math.floor(Math.random() * starts.length)] ?? "Básico";
+        freshStartRef.current = false;
+        lastPickRef.current = startFig;
+        graphFigureRef.current = startFig;
+        queue.push({ figure: startFig });
+        continue;
       }
+      // siempre por conexiones: un cantante sigue el mapa
+      const g = graphRef.current;
+      const from = graphFigureRef.current;
+      const directOptions = from
+        ? neighbours(g, from).filter((f) => f !== from)
+        : [];
+      // El mapa manda primero: si la figura tiene salidas propias, seguimos
+      // esas flechas. Si no tiene, continuamos desde el hub donde termina.
+      const standingAt = from ? (figureEndsAt(from) ?? from) : "Básico";
+      const options =
+        directOptions.length > 0
+          ? directOptions
+          : neighbours(g, standingAt).filter((f) => f !== from);
+      if (options.length === 0) break;
+      const next = options[Math.floor(Math.random() * options.length)];
+      graphFigureRef.current = next;
+      queue.push({ figure: next });
     }
     setUpcoming([...queue]);
   }, []);
@@ -214,6 +225,7 @@ export default function Home() {
     queueRef.current = [];
     listPositionRef.current = 0;
     graphFigureRef.current = null;
+    freshStartRef.current = true;
     refillQueue();
   }, [enabledFigures, enabledCombos, practiceMode, refillQueue]);
 
@@ -271,6 +283,7 @@ export default function Home() {
     setCurrentCall(item.figure);
     setUpcomingCall(null);
     setHistory((h) => [...h.slice(-11), item.figure]);
+    setCurrentStandingAt(figureEndsAt(item.figure) ?? item.figure);
     if (voiceRef.current) speak(item.figure);
     // hold this figure for its own length (in ochos) before the next call
     const figureOchos =
@@ -315,6 +328,12 @@ export default function Home() {
     const frame = () => {
       const tracker = trackerRef.current;
       tracker?.update();
+
+      // intensidad de la canción (throttle ~15/s para no re-renderizar de más)
+      if (tracker && ctx.currentTime - lastLevelAtRef.current > 0.066) {
+        lastLevelAtRef.current = ctx.currentTime;
+        setSongLevel(tracker.level);
+      }
 
       // adopt the live tempo estimate while "auto" is on
       if (autoTempoRef.current && tracker?.bpm) {
@@ -365,14 +384,22 @@ export default function Home() {
     barRef.current = 0;
     nextCallBarRef.current = 1;
     pendingRef.current = null;
+    queueRef.current = [];
     setUpcomingCall(null);
+    setUpcoming([]);
+    setCurrentCall(null);
+    setCurrentStandingAt("Básico");
+    graphFigureRef.current = null;
+    freshStartRef.current = true;
   };
 
+  /* play/pause: mantiene la secuencia y la posición (no reinicia) */
   const togglePlay = () => {
     if (playing) {
       setPlaying(false);
-      resetEngine();
+      pausedRef.current = true;
       audioElRef.current?.pause();
+      if (mode === "song") void audioCtxRef.current?.suspend();
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
       return;
     }
@@ -380,15 +407,30 @@ export default function Home() {
     if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
     void audioCtxRef.current.resume();
     if (mode === "song" && audioElRef.current) {
-      nextBeatTimeRef.current = audioCtxRef.current.currentTime + 0.1;
+      if (!pausedRef.current) {
+        nextBeatTimeRef.current = audioCtxRef.current.currentTime + 0.1;
+      }
       void audioElRef.current.play();
     }
+    pausedRef.current = false;
     setPlaying(true);
+  };
+
+  /* reinicio total: vuelve al arranque (Básico/Guapeala) */
+  const stopAndReset = () => {
+    setPlaying(false);
+    pausedRef.current = false;
+    audioElRef.current?.pause();
+    if (audioElRef.current) audioElRef.current.currentTime = 0;
+    void audioCtxRef.current?.resume();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    resetEngine();
+    setSongLevel(0);
   };
 
   const switchMode = (next: Mode) => {
     if (next === mode) return;
-    if (playing) togglePlay();
+    stopAndReset();
     setMode(next);
   };
 
@@ -487,7 +529,17 @@ export default function Home() {
     });
   };
 
+
   const canPlay = mode === "metronome" || !!songName;
+  const visibleCall = currentCall ?? upcomingCall;
+  const visibleDuration = visibleCall
+    ? (durations[visibleCall] ?? figureDuration(visibleCall))
+    : null;
+  const visibleImplicit = visibleCall ? figureImplies(visibleCall) : undefined;
+  const visibleEndsAt = visibleCall ? figureEndsAt(visibleCall) : undefined;
+  const nextGroups = groupUpcoming(upcoming).slice(0, 3);
+  const idleLabel =
+    practiceMode === "graph" ? displayFigureName(currentStandingAt) : "listo";
 
   return (
     <div className="relative flex h-dvh overflow-hidden">
@@ -555,9 +607,26 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* counter 1-8 (compact) + current call */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex items-end gap-1.5 sm:gap-2.5">
+        </header>
+
+        {/* ---- caller stage ---- */}
+        <div className="z-10 min-h-0 flex-1 px-2 pb-2">
+          <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-night-deep/30 px-4 text-center backdrop-blur-sm">
+            <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs tracking-[0.22em] text-hueso/40 uppercase">
+              <span>conexiones</span>
+              <span>·</span>
+              <span>{mode === "song" ? "canción" : "sin canción"}</span>
+              <span>·</span>
+              <Link
+                href="/mapa"
+                className="text-mar transition-colors hover:text-hueso"
+              >
+                abrir mapa
+              </Link>
+            </div>
+
+            {/* counter 1-8 — centered above the big words */}
+            <div className="mb-8 flex items-end justify-center gap-2 sm:gap-3.5">
               {BEATS.map((count) => {
                 const ghost = count === 4 || count === 8;
                 const active = playing && beat === count;
@@ -566,10 +635,10 @@ export default function Home() {
                     key={count}
                     className={[
                       "font-display leading-none transition-colors duration-100",
-                      count === 5 ? "ml-2 sm:ml-4" : "",
+                      count === 5 ? "ml-3 sm:ml-6" : "",
                       ghost
-                        ? "text-xl text-hueso/10 sm:text-2xl"
-                        : "text-3xl sm:text-4xl",
+                        ? "text-2xl text-hueso/10 sm:text-3xl"
+                        : "text-4xl sm:text-5xl md:text-6xl",
                       active && !ghost && "count-glow animate-beat-pop text-mango",
                       active && ghost && "animate-beat-pop text-hueso/30",
                       !active && !ghost && "text-hueso/55",
@@ -582,44 +651,10 @@ export default function Home() {
                 );
               })}
             </div>
-            <p
-              className={[
-                "font-call h-7 text-xl leading-7 transition-colors sm:text-2xl",
-                currentCall
-                  ? "bg-linear-to-r from-rosa via-flame to-mango bg-clip-text text-transparent"
-                  : upcomingCall
-                    ? "text-hueso/25"
-                    : "text-transparent",
-              ].join(" ")}
-            >
-              {currentCall || upcomingCall
-                ? displayFigureName(currentCall ?? upcomingCall ?? "")
-                : "·"}
-            </p>
-          </div>
-        </header>
 
-        {/* ---- caller stage ---- */}
-        <div className="z-10 min-h-0 flex-1 px-2 pb-2">
-          <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-night-deep/30 px-4 text-center backdrop-blur-sm">
-            <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs tracking-[0.22em] text-hueso/40 uppercase">
-              <span>{practiceMode === "graph" ? "conexiones" : "aleatorio"}</span>
-              <span>·</span>
-              <span>{mode === "song" ? "canción" : "sin canción"}</span>
-              <span>·</span>
-              <Link
-                href="/mapa"
-                className="text-mar transition-colors hover:text-hueso"
-              >
-                abrir mapa
-              </Link>
-            </div>
-
-            <div className="max-w-5xl">
-              <p className="mb-3 text-sm tracking-[0.25em] text-hueso/35 uppercase">
-                ahora
-              </p>
-              <h2 className="font-call min-h-[1.1em] text-6xl leading-none text-balance sm:text-7xl md:text-8xl">
+            {/* una sola lista que decrece: el actual grande, los que siguen más chicos */}
+            <div className="flex w-full max-w-5xl flex-col items-center">
+              <h2 className="font-call min-h-[1.1em] text-7xl leading-none text-balance sm:text-8xl md:text-9xl">
                 {currentCall ? (
                   <span className="bg-linear-to-r from-rosa via-flame to-mango bg-clip-text text-transparent">
                     {displayFigureName(currentCall)}
@@ -629,45 +664,53 @@ export default function Home() {
                     {displayFigureName(upcomingCall)}
                   </span>
                 ) : (
-                  <span className="text-hueso/15">listo</span>
+                  <span className="text-hueso/15">{idleLabel}</span>
                 )}
               </h2>
-            </div>
 
-            <div className="mt-8 flex flex-col items-center gap-2">
-              <p className="text-xs tracking-[0.25em] text-hueso/35 uppercase">
-                próxima
-              </p>
-              <p className="font-call text-3xl text-hueso/45">
-                {upcomingCall ? displayFigureName(upcomingCall) : "·"}
-              </p>
-            </div>
-
-            {history.length > 0 && (
-              <div className="mt-10 flex max-w-4xl flex-wrap justify-center gap-2">
-                {history.slice(-8).map((figure, index) => (
-                  <span
-                    key={`${figure}-${index}`}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-hueso/45"
-                  >
-                    {displayFigureName(figure)}
+              <div className="mt-5 flex min-h-8 flex-wrap items-center justify-center gap-2">
+                {visibleDuration && (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-hueso/45">
+                    {visibleDuration}×8
                   </span>
-                ))}
-              </div>
-            )}
-
-            {upcoming.length > 0 && (
-              <div className="mt-5 flex max-w-4xl flex-wrap justify-center gap-2">
-                {upcoming.slice(0, 6).map((item, index) => (
-                  <span
-                    key={`${item.figure}-${index}`}
-                    className="rounded-full border border-mar/15 bg-mar/5 px-3 py-1 text-xs text-mar/45"
-                  >
-                    {displayFigureName(item.figure)}
+                )}
+                {visibleImplicit && (
+                  <span className="rounded-full border border-mango/25 bg-mango/10 px-3 py-1 text-xs text-mango/70">
+                    implícito: {displayFigureName(visibleImplicit)}
                   </span>
-                ))}
+                )}
+                {visibleEndsAt && (
+                  <span className="rounded-full border border-mar/20 bg-mar/10 px-3 py-1 text-xs text-mar/70">
+                    queda: {displayFigureName(visibleEndsAt)}
+                  </span>
+                )}
+                {!visibleCall && practiceMode === "graph" && (
+                  <span className="rounded-full border border-mar/20 bg-mar/10 px-3 py-1 text-xs text-mar/60">
+                    queda: {displayFigureName(currentStandingAt)}
+                  </span>
+                )}
               </div>
-            )}
+
+              {nextGroups.length > 0 && (
+                <ol className="mt-10 flex flex-col items-center gap-3">
+                  {nextGroups.map((group, index) => (
+                    <li
+                      key={`${group.join("-")}-${index}`}
+                      className={[
+                        "font-call leading-tight text-balance",
+                        index === 0
+                          ? "text-4xl text-hueso/65 sm:text-5xl"
+                          : index === 1
+                            ? "text-3xl text-hueso/40 sm:text-4xl"
+                            : "text-2xl text-hueso/25 sm:text-3xl",
+                      ].join(" ")}
+                    >
+                      {group.map(displayFigureName).join("  →  ")}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           </div>
         </div>
 
@@ -676,7 +719,7 @@ export default function Home() {
           <button
             onClick={togglePlay}
             disabled={!canPlay}
-            aria-label={playing ? "Parar" : "Empezar"}
+            aria-label={playing ? "Pausar" : "Empezar"}
             className={[
               "flex size-14 items-center justify-center rounded-full text-xl text-night transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
               playing
@@ -684,8 +727,30 @@ export default function Home() {
                 : "bg-mango shadow-[0_0_36px] shadow-mango/40",
             ].join(" ")}
           >
-            {playing ? "■" : "▶"}
+            {playing ? "❚❚" : "▶"}
           </button>
+
+          <button
+            onClick={stopAndReset}
+            aria-label="Reiniciar"
+            className="flex size-10 items-center justify-center rounded-full border border-white/15 text-sm text-hueso/60 transition-colors hover:text-hueso"
+          >
+            ↺
+          </button>
+
+          {mode === "song" && songName && (
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
+                intensidad
+              </span>
+              <div className="h-2.5 w-32 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-linear-to-r from-mar via-mango to-rosa transition-[width] duration-75"
+                  style={{ width: `${Math.round(songLevel * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {mode === "metronome" ? (
             <label className="flex flex-col items-center gap-1">
@@ -693,6 +758,7 @@ export default function Home() {
                 tempo · {bpm} bpm
               </span>
               <input
+                key="metronome-bpm"
                 type="range"
                 min={130}
                 max={240}
@@ -709,6 +775,7 @@ export default function Home() {
                 </span>
                 <div className="flex items-center gap-2">
                   <input
+                    key="song-bpm"
                     type="number"
                     step={0.5}
                     min={120}
@@ -758,6 +825,7 @@ export default function Home() {
             <label className="cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20">
               ♫ subir canción
               <input
+                key="upload-file"
                 type="file"
                 accept="audio/*"
                 onChange={handleSongUpload}
@@ -765,33 +833,6 @@ export default function Home() {
               />
             </label>
           )}
-
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-              llamadas
-            </span>
-            <div className="flex overflow-hidden rounded-full border border-white/15">
-              {(
-                [
-                  ["random", "aleatorio"],
-                  ["graph", "conexiones"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => setPracticeMode(value)}
-                  className={[
-                    "px-3.5 py-1 text-sm transition-colors",
-                    practiceMode === value
-                      ? "bg-mango font-semibold text-night"
-                      : "text-hueso/60 hover:text-hueso",
-                  ].join(" ")}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="flex flex-col items-center gap-1">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">

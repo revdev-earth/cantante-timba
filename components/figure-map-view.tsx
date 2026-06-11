@@ -57,7 +57,7 @@ function wantsTextUndo(target: EventTarget | null) {
 }
 
 export default function FigureMapView() {
-  const [editing, setEditing] = useState(false);
+  const editing = true; // edición siempre activa; las opciones van en el engranaje
   const [graph, setGraph] = useState<ConnectionGraph>(() => defaultGraph());
   const [graphLoaded, setGraphLoaded] = useState(false);
   const [durations, setDurations] = useState<Record<string, number>>(() =>
@@ -247,17 +247,6 @@ export default function FigureMapView() {
           >
             combos
           </Link>
-          <button
-            onClick={() => setEditing((value) => !value)}
-            className={[
-              "rounded-full border px-3 py-1.5 text-sm transition-colors",
-              editing
-                ? "border-mar/60 bg-mar/15 text-mar"
-                : "border-white/15 text-hueso/50 hover:text-hueso",
-            ].join(" ")}
-          >
-            {editing ? "listo" : "editar"}
-          </button>
           <button
             onClick={() => applyGraphChange((current) => organizeGraph(current))}
             className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:border-mango/40 hover:text-mango"

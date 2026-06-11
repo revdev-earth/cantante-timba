@@ -68,6 +68,8 @@ export const FIGURES = [
   "Dos giros",
   "Amistad",
   "Directo pareja",
+  "Cambio",
+  "Se fue",
   "Foto",
 ];
 
