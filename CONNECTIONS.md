@@ -79,7 +79,7 @@ Va a:
 - Camina la rueda
 - Salúdate
 - Salúdate y dame
-- Doble tiempo
+- Contratiempo
 - Americano
 - Todos americanos
 
@@ -206,7 +206,7 @@ Va a:
 
 - Cero la vecina
 
-### Doble tiempo
+### Contratiempo
 
 Va a:
 
@@ -253,7 +253,7 @@ aleatorio.
 - Dile que no → Dame
 - Dile que no → Paséala
 - Cocacola → Cocacolita
-- Doble tiempo → Sabrosura
+- Contratiempo → Sabrosura
 - Todos americanos → Corazón
 
 ### Croqueta

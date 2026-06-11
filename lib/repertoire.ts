@@ -55,7 +55,7 @@ export const FIGURES = [
   "Mira la bonita",
   "Mira la bonita arriba",
   "Mira la bonita sola",
-  "Doble tiempo",
+  "Contratiempo",
   "Sabrosura",
   "Saloneo",
   "Tarita",
@@ -99,7 +99,7 @@ export const COMBOS: string[][] = [
   ["Exhibela", "Dile que no"],
   ["Dile que no", "Dame"],
   ["Dile que no", "Paséala"],
-  ["Doble tiempo", "Sabrosura"],
+  ["Contratiempo", "Sabrosura"],
   ["Todos americanos", "Corazón"],
 
   // —— Croqueta y sus salidas ——
@@ -117,7 +117,9 @@ export const comboKey = (combo: string[]) => combo.join(COMBO_SEPARATOR);
  * long the caller waits before the next call. Anything not listed = 1 ocho.
  */
 const FIGURE_DURATION: Record<string, number> = {
-  "Enchufla doble": 2,
+  Enchufla: 2,
+  "Enchufla arriba": 2,
+  "Enchufla doble": 3,
   "70": 3,
   "70 por abajo": 3,
   "70 complicada": 3,
