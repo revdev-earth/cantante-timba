@@ -1,10 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PracticeSidebar, {
-  type ConnectedFigure,
-} from "@/components/practice-sidebar";
-import BubbleGraph from "@/components/bubble-graph";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { detectBpm } from "@/lib/beat-detection";
 import { LiveBeatTracker } from "@/lib/live-beat-tracker";
 import {
@@ -12,8 +8,6 @@ import {
   graphFigures,
   loadGraph,
   neighbours,
-  organizeGraph,
-  saveGraph,
   type ConnectionGraph,
 } from "@/lib/connections";
 import {
@@ -24,7 +18,6 @@ import {
   displayRepertoireItem,
   expandItem,
   figureDuration,
-  type PracticeList,
   type QueueItem,
 } from "@/lib/repertoire";
 import { figureEndsAt, START_FIGURES } from "@/lib/glossary";
@@ -33,40 +26,10 @@ import Link from "next/link";
 
 const BEATS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 const QUEUE_LOOKAHEAD = 10;
-const STORAGE_KEY = "timba-practice-lists";
 const DURATIONS_STORAGE_KEY = "timba-durations";
-const NOTES_STORAGE_KEY = "timba-figure-notes";
 
 type Mode = "song" | "metronome";
-type GraphChangeOptions = { recordHistory?: boolean };
-type GraphUpdate = ConnectionGraph | ((graph: ConnectionGraph) => ConnectionGraph);
-
-function sameGraph(a: ConnectionGraph, b: ConnectionGraph) {
-  if (a === b) return true;
-  if (a.edges.length !== b.edges.length) return false;
-  for (let i = 0; i < a.edges.length; i += 1) {
-    if (a.edges[i].from !== b.edges[i].from || a.edges[i].to !== b.edges[i].to) {
-      return false;
-    }
-  }
-
-  const aPositions = Object.entries(a.positions);
-  if (aPositions.length !== Object.keys(b.positions).length) return false;
-  return aPositions.every(([figure, point]) => {
-    const other = b.positions[figure];
-    return other?.x === point.x && other.y === point.y;
-  });
-}
-
-function wantsTextUndo(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target.isContentEditable
-  );
-}
+type PracticeMode = "random" | "graph";
 
 export default function Home() {
   /* transport */
@@ -86,8 +49,6 @@ export default function Home() {
 
   /* repertoire */
   const [panelOpen, setPanelOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [enabledFigures, setEnabledFigures] = useState<Set<string>>(
     () => new Set(FIGURES),
   );
@@ -97,8 +58,6 @@ export default function Home() {
 
   /* connection graph */
   const [graph, setGraph] = useState<ConnectionGraph>(() => defaultGraph());
-  const [graphLoaded, setGraphLoaded] = useState(false);
-  const graphUndoRef = useRef<ConnectionGraph[]>([]);
 
   /* per-figure duration in ochos (8-count bars) */
   const [durations, setDurations] = useState<Record<string, number>>(() =>
@@ -106,13 +65,7 @@ export default function Home() {
   );
   const [durationsLoaded, setDurationsLoaded] = useState(false);
 
-  /* per-figure learning notes (user-editable, overrides glossary defaults) */
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [notesLoaded, setNotesLoaded] = useState(false);
-
-  /* practice lists */
-  const [lists, setLists] = useState<PracticeList[]>([]);
-  const [activeListId, setActiveListId] = useState("random");
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>("random");
 
   /* uploaded song */
   const [songName, setSongName] = useState<string | null>(null);
@@ -131,8 +84,7 @@ export default function Home() {
   const soundRef = useRef(soundOn);
   const enabledFiguresRef = useRef(enabledFigures);
   const enabledCombosRef = useRef(enabledCombos);
-  const listsRef = useRef(lists);
-  const activeListIdRef = useRef(activeListId);
+  const practiceModeRef = useRef(practiceMode);
   const queueRef = useRef<QueueItem[]>([]);
   const pendingRef = useRef<QueueItem | null>(null);
   const lastPickRef = useRef<string | null>(null);
@@ -140,7 +92,6 @@ export default function Home() {
   const graphRef = useRef<ConnectionGraph>(graph);
   const graphFigureRef = useRef<string | null>(null);
   const userCombosRef = useRef<Combo[]>([]);
-  const listsLoadedRef = useRef(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -149,7 +100,6 @@ export default function Home() {
   const nextBeatTimeRef = useRef(0);
   const lastPeakSeenRef = useRef(0);
   const durationsRef = useRef(durations);
-  const durationsLoadedRef = useRef(false);
   const rafRef = useRef(0);
 
   /* keep engine refs in sync with the latest state */
@@ -161,8 +111,7 @@ export default function Home() {
     soundRef.current = soundOn;
     enabledFiguresRef.current = enabledFigures;
     enabledCombosRef.current = enabledCombos;
-    listsRef.current = lists;
-    activeListIdRef.current = activeListId;
+    practiceModeRef.current = practiceMode;
     autoTempoRef.current = autoTempo;
     graphRef.current = graph;
     durationsRef.current = durations;
@@ -170,17 +119,23 @@ export default function Home() {
 
   /* ---- per-figure durations persistence ---- */
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DURATIONS_STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw) as Record<string, number>;
-        setDurations((current) => ({ ...current, ...saved }));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        const raw = localStorage.getItem(DURATIONS_STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as Record<string, number>;
+          setDurations((current) => ({ ...current, ...saved }));
+        }
+      } catch {
+        /* corrupt storage — keep defaults */
       }
-    } catch {
-      /* corrupt storage — keep defaults */
-    }
-    setDurationsLoaded(true);
-    durationsLoadedRef.current = true;
+      setDurationsLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -189,65 +144,12 @@ export default function Home() {
     }
   }, [durations, durationsLoaded]);
 
-  const setFigureDuration = useCallback((figure: string, ochos: number) => {
-    setDurations((current) => ({
-      ...current,
-      [figure]: Math.max(1, Math.min(8, ochos)),
-    }));
-  }, []);
-
-  /* ---- per-figure notes persistence ---- */
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(NOTES_STORAGE_KEY);
-      if (raw) setNotes(JSON.parse(raw) as Record<string, string>);
-    } catch {
-      /* corrupt storage — keep glossary defaults */
-    }
-    setNotesLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (notesLoaded) {
-      localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(notes));
-    }
-  }, [notes, notesLoaded]);
-
-  const setFigureNote = useCallback((figure: string, note: string) => {
-    setNotes((current) => ({ ...current, [figure]: note }));
-  }, []);
-
-  /* ---- persistence of practice lists ---- */
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) setLists(JSON.parse(raw));
-      } catch {
-        /* corrupt storage — start fresh */
-      }
-      listsLoadedRef.current = true;
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!listsLoadedRef.current) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
-  }, [lists]);
-
   /* ---- connection graph persistence ---- */
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      graphUndoRef.current = [];
       setGraph(loadGraph());
-      setGraphLoaded(true);
       userCombosRef.current = loadUserCombos();
     });
     return () => {
@@ -255,55 +157,13 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-    if (graphLoaded) saveGraph(graph);
-  }, [graph, graphLoaded]);
-
-  const captureGraphUndo = useCallback(() => {
-    graphUndoRef.current = [...graphUndoRef.current.slice(-39), graphRef.current];
-  }, []);
-
-  const applyGraphChange = useCallback(
-    (update: GraphUpdate, options: GraphChangeOptions = {}) => {
-      setGraph((current) => {
-        const next = typeof update === "function" ? update(current) : update;
-        if (sameGraph(current, next)) return current;
-        if (options.recordHistory !== false) {
-          graphUndoRef.current = [...graphUndoRef.current.slice(-39), current];
-        }
-        return next;
-      });
-    },
-    [],
-  );
-
-  const undoGraphChange = useCallback(() => {
-    const previous = graphUndoRef.current.at(-1);
-    if (!previous) return;
-    graphUndoRef.current = graphUndoRef.current.slice(0, -1);
-    setGraph(previous);
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== "z") return;
-      if (!event.metaKey && !event.ctrlKey) return;
-      if (event.shiftKey || event.altKey || wantsTextUndo(event.target)) return;
-      event.preventDefault();
-      undoGraphChange();
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [undoGraphChange]);
-
   /* ---- call queue ---- */
   const refillQueue = useCallback(() => {
     const queue = queueRef.current;
     let guard = 0;
     while (queue.length < QUEUE_LOOKAHEAD && guard++ < 50) {
-      const listId = activeListIdRef.current;
-      if (listId === "random") {
+      const mode = practiceModeRef.current;
+      if (mode === "random") {
         const singles = FIGURES.filter(
           (f) => enabledFiguresRef.current.has(f) && f !== lastPickRef.current,
         );
@@ -323,7 +183,7 @@ export default function Home() {
         const pick = pool[Math.floor(Math.random() * pool.length)];
         lastPickRef.current = pick;
         queue.push(...expandItem(pick));
-      } else if (listId === "graph") {
+      } else if (mode === "graph") {
         const g = graphRef.current;
         const from = graphFigureRef.current;
         // tras una figura quedas parado en el hub donde "termina"; las
@@ -344,12 +204,6 @@ export default function Home() {
         }
         graphFigureRef.current = next;
         queue.push({ figure: next });
-      } else {
-        const list = listsRef.current.find((l) => l.id === listId);
-        if (!list || list.items.length === 0) break;
-        const item = list.items[listPositionRef.current % list.items.length];
-        listPositionRef.current += 1;
-        queue.push(...expandItem(item));
       }
     }
     setUpcoming([...queue]);
@@ -361,7 +215,7 @@ export default function Home() {
     listPositionRef.current = 0;
     graphFigureRef.current = null;
     refillQueue();
-  }, [enabledFigures, enabledCombos, activeListId, lists, refillQueue]);
+  }, [enabledFigures, enabledCombos, practiceMode, refillQueue]);
 
   /* ---- audio ---- */
 
@@ -613,7 +467,7 @@ export default function Home() {
     setAnalyzing(false);
   };
 
-  /* ---- repertoire, lists & graph ---- */
+  /* ---- repertoire & graph ---- */
 
   const toggleFigure = (figure: string) => {
     setEnabledFigures((prev) => {
@@ -633,67 +487,10 @@ export default function Home() {
     });
   };
 
-  const saveList = (list: PracticeList) => {
-    setLists((prev) => {
-      const index = prev.findIndex((l) => l.id === list.id);
-      if (index === -1) return [...prev, list];
-      const next = [...prev];
-      next[index] = list;
-      return next;
-    });
-  };
-
-  const deleteList = (id: string) => {
-    setLists((prev) => prev.filter((l) => l.id !== id));
-    if (activeListId === id) setActiveListId("random");
-  };
-
-  const connectedFigures = useMemo<ConnectedFigure[]>(() => {
-    const order = new Map(graphFigures(graph).map((figure, index) => [figure, index]));
-    const stats = new Map(
-      graphFigures(graph).map((figure) => [
-        figure,
-        { figure, total: 0, connections: [] as ConnectedFigure["connections"] },
-      ]),
-    );
-
-    for (const edge of graph.edges) {
-      const from = stats.get(edge.from);
-      const to = stats.get(edge.to);
-      if (!from || !to) continue;
-      from.total += 1;
-      to.total += 1;
-      from.connections.push({ direction: "out", other: edge.to });
-      to.connections.push({ direction: "in", other: edge.from });
-    }
-
-    return [...stats.values()].sort((a, b) => {
-      const degree = b.total - a.total;
-      if (degree !== 0) return degree;
-      return (order.get(a.figure) ?? 0) - (order.get(b.figure) ?? 0);
-    });
-  }, [graph]);
-
   const canPlay = mode === "metronome" || !!songName;
 
   return (
     <div className="relative flex h-dvh overflow-hidden">
-      <PracticeSidebar
-        open={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        history={history}
-        currentCall={currentCall}
-        upcomingCall={upcomingCall}
-        upcoming={upcoming}
-        lists={lists}
-        activeListId={activeListId}
-        allItems={[...FIGURES, ...COMBOS.map(comboKey)]}
-        connectedFigures={connectedFigures}
-        onSelectList={(id) => setActiveListId(id)}
-        onSaveList={saveList}
-        onDeleteList={deleteList}
-      />
-
       <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* ---- background atmosphere ---- */}
         <div
@@ -715,14 +512,6 @@ export default function Home() {
         {/* ---- top bar: title · tabs · counter ---- */}
         <header className="z-10 flex flex-col gap-3 px-4 pt-3 pb-2">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Abrir la tanda"
-              className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-hueso/70 backdrop-blur transition-colors hover:text-hueso lg:hidden"
-            >
-              ☰
-            </button>
-
             <h1 className="font-display hidden text-2xl tracking-wide uppercase sm:block">
               <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
                 Timba Cantante
@@ -758,23 +547,12 @@ export default function Home() {
             >
               combos
             </Link>
-            <button
-              onClick={() => setEditing((e) => !e)}
-              className={[
-                "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                editing
-                  ? "border-mar/60 bg-mar/15 text-mar"
-                  : "border-white/15 text-hueso/50 hover:text-hueso",
-              ].join(" ")}
+            <Link
+              href="/mapa"
+              className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso"
             >
-              {editing ? "listo" : "editar"}
-            </button>
-            <button
-              onClick={() => applyGraphChange((g) => organizeGraph(g))}
-              className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:border-mango/40 hover:text-mango"
-            >
-              organizar
-            </button>
+              mapa
+            </Link>
           </div>
 
           {/* counter 1-8 (compact) + current call */}
@@ -821,23 +599,75 @@ export default function Home() {
           </div>
         </header>
 
-        {/* ---- the graph: the figures light up as they are called ---- */}
+        {/* ---- caller stage ---- */}
         <div className="z-10 min-h-0 flex-1 px-2 pb-2">
-          <div className="h-full overflow-hidden rounded-3xl border border-white/10 bg-night-deep/30 backdrop-blur-sm">
-            <BubbleGraph
-              graph={graph}
-              onChange={applyGraphChange}
-              onCaptureUndo={captureGraphUndo}
-              activeFigure={currentCall}
-              pendingFigure={upcomingCall}
-              editing={editing}
-              durations={durations}
-              onSetDuration={setFigureDuration}
-              notes={notes}
-              onSetNote={setFigureNote}
-              onResetLayout={() => applyGraphChange((g) => organizeGraph(g))}
-              onClearEdges={() => applyGraphChange((g) => ({ ...g, edges: [] }))}
-            />
+          <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-night-deep/30 px-4 text-center backdrop-blur-sm">
+            <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs tracking-[0.22em] text-hueso/40 uppercase">
+              <span>{practiceMode === "graph" ? "conexiones" : "aleatorio"}</span>
+              <span>·</span>
+              <span>{mode === "song" ? "canción" : "sin canción"}</span>
+              <span>·</span>
+              <Link
+                href="/mapa"
+                className="text-mar transition-colors hover:text-hueso"
+              >
+                abrir mapa
+              </Link>
+            </div>
+
+            <div className="max-w-5xl">
+              <p className="mb-3 text-sm tracking-[0.25em] text-hueso/35 uppercase">
+                ahora
+              </p>
+              <h2 className="font-call min-h-[1.1em] text-6xl leading-none text-balance sm:text-7xl md:text-8xl">
+                {currentCall ? (
+                  <span className="bg-linear-to-r from-rosa via-flame to-mango bg-clip-text text-transparent">
+                    {displayFigureName(currentCall)}
+                  </span>
+                ) : upcomingCall ? (
+                  <span className="text-hueso/35">
+                    {displayFigureName(upcomingCall)}
+                  </span>
+                ) : (
+                  <span className="text-hueso/15">listo</span>
+                )}
+              </h2>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center gap-2">
+              <p className="text-xs tracking-[0.25em] text-hueso/35 uppercase">
+                próxima
+              </p>
+              <p className="font-call text-3xl text-hueso/45">
+                {upcomingCall ? displayFigureName(upcomingCall) : "·"}
+              </p>
+            </div>
+
+            {history.length > 0 && (
+              <div className="mt-10 flex max-w-4xl flex-wrap justify-center gap-2">
+                {history.slice(-8).map((figure, index) => (
+                  <span
+                    key={`${figure}-${index}`}
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-hueso/45"
+                  >
+                    {displayFigureName(figure)}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {upcoming.length > 0 && (
+              <div className="mt-5 flex max-w-4xl flex-wrap justify-center gap-2">
+                {upcoming.slice(0, 6).map((item, index) => (
+                  <span
+                    key={`${item.figure}-${index}`}
+                    className="rounded-full border border-mar/15 bg-mar/5 px-3 py-1 text-xs text-mar/45"
+                  >
+                    {displayFigureName(item.figure)}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -935,6 +765,33 @@ export default function Home() {
               />
             </label>
           )}
+
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
+              llamadas
+            </span>
+            <div className="flex overflow-hidden rounded-full border border-white/15">
+              {(
+                [
+                  ["random", "aleatorio"],
+                  ["graph", "conexiones"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setPracticeMode(value)}
+                  className={[
+                    "px-3.5 py-1 text-sm transition-colors",
+                    practiceMode === value
+                      ? "bg-mango font-semibold text-night"
+                      : "text-hueso/60 hover:text-hueso",
+                  ].join(" ")}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="flex flex-col items-center gap-1">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
