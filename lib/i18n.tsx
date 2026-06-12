@@ -30,6 +30,7 @@ const UI = {
   "nav.combos": { es: "combos", de: "Combos", en: "combos" },
   "nav.caller": { es: "cantante", de: "Ansager", en: "caller" },
   "nav.map": { es: "mapa", de: "Karte", en: "map" },
+  "nav.menu": { es: "menú", de: "Menü", en: "menu" },
   "nav.back": { es: "← volver", de: "← zurück", en: "← back" },
   "status.connections": {
     es: "conexiones",

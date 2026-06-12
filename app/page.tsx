@@ -70,6 +70,7 @@ export default function Home() {
   const [callEveryBars, setCallEveryBars] = useState(1);
   const [voiceOn, setVoiceOn] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
 
   /* calls */
   const [currentCall, setCurrentCall] = useState<string | null>(null);
@@ -155,6 +156,15 @@ export default function Home() {
     graphRef.current = graph;
     durationsRef.current = durations;
   });
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [navOpen]);
 
   /* ---- per-figure durations persistence ---- */
   useEffect(() => {
@@ -661,17 +671,35 @@ export default function Home() {
           }}
         />
 
-        {/* ---- top bar: title · tabs · counter ---- */}
-        <header className="z-10 flex flex-col gap-3 px-4 pt-3 pb-2">
-          <div className="flex items-center gap-3">
-            <h1 className="font-display hidden text-2xl tracking-wide uppercase sm:block">
+        {/* ---- top bar: title · tabs · navigation ---- */}
+        <header className="z-10 flex flex-col gap-2 px-3 pt-2 pb-2 sm:px-4 sm:pt-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              aria-label={t("nav.menu")}
+              aria-expanded={navOpen}
+              onClick={() => setNavOpen(true)}
+              className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 text-hueso/70 backdrop-blur transition-colors hover:text-hueso sm:hidden"
+            >
+              <span aria-hidden className="flex flex-col gap-1">
+                <span className="block h-0.5 w-4 rounded-full bg-current" />
+                <span className="block h-0.5 w-4 rounded-full bg-current" />
+                <span className="block h-0.5 w-4 rounded-full bg-current" />
+              </span>
+            </button>
+
+            <h1 className="font-display mr-auto text-lg tracking-wide uppercase sm:text-2xl">
               <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
                 Timba Cantante
               </span>
             </h1>
 
+            <div className="shrink-0 sm:order-last">
+              <LanguageSwitcher />
+            </div>
+
             {/* mode tabs */}
-            <div className="mx-auto flex overflow-hidden rounded-full border border-white/15 bg-white/5 backdrop-blur">
+            <div className="hidden overflow-hidden rounded-full border border-white/15 bg-white/5 backdrop-blur sm:mx-auto sm:flex sm:w-auto">
               {(
                 [
                   ["song", t("mode.song")],
@@ -682,7 +710,7 @@ export default function Home() {
                   key={value}
                   onClick={() => switchMode(value as Mode)}
                   className={[
-                    "px-5 py-1.5 text-sm transition-colors",
+                    "min-w-0 flex-1 px-3 py-1.5 text-sm transition-colors sm:flex-none sm:px-5",
                     mode === value
                       ? "bg-linear-to-r from-mango to-flame font-semibold text-night"
                       : "text-hueso/60 hover:text-hueso",
@@ -695,20 +723,96 @@ export default function Home() {
 
             <Link
               href="/combos"
-              className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso"
+              className="hidden rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso sm:block"
             >
               {t("nav.combos")}
             </Link>
             <Link
               href="/mapa"
-              className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso"
+              className="hidden rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso sm:block"
             >
               {t("nav.map")}
             </Link>
-            <LanguageSwitcher />
           </div>
 
+          <div className="flex overflow-hidden rounded-full border border-white/15 bg-white/5 backdrop-blur sm:hidden">
+            {(
+              [
+                ["song", t("mode.song")],
+                ["metronome", t("mode.noSong")],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => switchMode(value as Mode)}
+                className={[
+                  "min-w-0 flex-1 px-3 py-1.5 text-sm transition-colors",
+                  mode === value
+                    ? "bg-linear-to-r from-mango to-flame font-semibold text-night"
+                    : "text-hueso/60 hover:text-hueso",
+                ].join(" ")}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </header>
+
+        {navOpen && (
+          <button
+            type="button"
+            aria-label={t("doc.close")}
+            className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] sm:hidden"
+            onClick={() => setNavOpen(false)}
+          />
+        )}
+        <aside
+          aria-label={t("nav.menu")}
+          className={[
+            "fixed inset-y-0 left-0 z-40 flex w-72 max-w-[82vw] flex-col border-r border-white/10 bg-night-deep/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl transition-transform duration-200 sm:hidden",
+            navOpen ? "translate-x-0" : "-translate-x-full",
+          ].join(" ")}
+        >
+          <div className="mb-6 flex items-center gap-3">
+            <h2 className="font-display mr-auto text-xl tracking-wide uppercase">
+              <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
+                Timba
+              </span>
+            </h2>
+            <button
+              type="button"
+              aria-label={t("doc.close")}
+              onClick={() => setNavOpen(false)}
+              className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 text-xl leading-none text-hueso/70 transition-colors hover:text-hueso"
+            >
+              ×
+            </button>
+          </div>
+
+          <nav className="flex flex-col gap-2">
+            <Link
+              href="/"
+              onClick={() => setNavOpen(false)}
+              className="rounded-2xl border border-mango/35 bg-mango/10 px-4 py-3 text-sm font-semibold text-mango"
+            >
+              {t("nav.caller")}
+            </Link>
+            <Link
+              href="/combos"
+              onClick={() => setNavOpen(false)}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-hueso/70 transition-colors hover:border-white/20 hover:text-hueso"
+            >
+              {t("nav.combos")}
+            </Link>
+            <Link
+              href="/mapa"
+              onClick={() => setNavOpen(false)}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-hueso/70 transition-colors hover:border-white/20 hover:text-hueso"
+            >
+              {t("nav.map")}
+            </Link>
+          </nav>
+        </aside>
 
         {/* ---- caller stage ---- */}
         <div className="z-10 min-h-0 flex-1 px-2 pb-2">
