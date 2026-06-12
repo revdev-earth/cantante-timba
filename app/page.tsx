@@ -31,7 +31,7 @@ const PRESET_SONGS = [
   { name: "Mi Timbaton", file: "Mi Timbaton.mp3" },
   { name: "Caramelo Con Picante", file: "Caramelo Con Picante.mp3" },
   { name: "Toda Una Vida", file: "Toda Una Vida.mp3" },
-  { name: "Bajanda Changui", file: "Bajanda Changüí.mp3" },
+  { name: "Bajanda Changui", file: "Bajanda Changui.mp3" },
   { name: "Lloraras", file: "lloraras.mp3" },
 ] as const;
 
@@ -985,27 +985,27 @@ export default function Home() {
         </div>
 
         {/* ---- transport controls ---- */}
-        <section className="z-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 border-t border-white/10 bg-night-deep/50 px-4 py-3 backdrop-blur">
+        <section className="z-10 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-t border-white/10 bg-night-deep/50 px-3 py-2 backdrop-blur">
           <button
             onClick={togglePlay}
             disabled={!canPlay}
             aria-label={playing ? "Pausar" : "Empezar"}
             className={[
-              "flex size-14 items-center justify-center rounded-full text-night transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
+              "flex size-12 items-center justify-center rounded-full text-night transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
               playing
-                ? "bg-rosa shadow-[0_0_36px] shadow-rosa/40"
-                : "bg-mango shadow-[0_0_36px] shadow-mango/40",
+                ? "bg-rosa shadow-[0_0_28px] shadow-rosa/40"
+                : "bg-mango shadow-[0_0_28px] shadow-mango/40",
             ].join(" ")}
           >
             {playing ? (
               <span aria-hidden className="flex items-center gap-1.5">
-                <span className="h-5 w-1.5 rounded-full bg-current" />
-                <span className="h-5 w-1.5 rounded-full bg-current" />
+                <span className="h-4 w-1.5 rounded-full bg-current" />
+                <span className="h-4 w-1.5 rounded-full bg-current" />
               </span>
             ) : (
               <span
                 aria-hidden
-                className="ml-1 h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] border-l-current"
+                className="ml-1 h-0 w-0 border-y-[9px] border-y-transparent border-l-14 border-l-current"
               />
             )}
           </button>
@@ -1013,7 +1013,8 @@ export default function Home() {
           <button
             onClick={stopAndReset}
             aria-label={t("transport.reset")}
-            className="flex size-10 items-center justify-center rounded-full border border-white/15 text-sm text-hueso/60 transition-colors hover:text-hueso"
+            title={t("transport.reset")}
+            className="flex size-9 items-center justify-center rounded-full border border-white/15 text-sm text-hueso/60 transition-colors hover:text-hueso"
           >
             ↺
           </button>
@@ -1022,29 +1023,24 @@ export default function Home() {
             onClick={() => setTransportSheetOpen(true)}
             aria-label={t("transport.options")}
             title={t("transport.options")}
-            className="flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-lg text-hueso/70 transition-colors hover:text-hueso sm:hidden"
+            className="flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-base text-hueso/70 transition-colors hover:text-hueso sm:hidden"
           >
             ⚙
           </button>
 
           {mode === "song" && songName && (
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                {t("transport.intensity")}
-              </span>
-              <div className="h-2.5 w-32 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-full rounded-full bg-linear-to-r from-mar via-mango to-rosa transition-[width] duration-75"
-                  style={{ width: `${Math.round(songLevel * 100)}%` }}
-                />
-              </div>
+            <div
+              title={t("transport.intensity")}
+              className="h-2 w-24 overflow-hidden rounded-full bg-white/10"
+            >
+              <div
+                className="h-full rounded-full bg-linear-to-r from-mar via-mango to-rosa transition-[width] duration-75"
+                style={{ width: `${Math.round(songLevel * 100)}%` }}
+              />
             </div>
           )}
 
-          <div className="hidden flex-col items-center gap-1 sm:flex">
-            <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-              {t("transport.availableSongs")}
-            </span>
+          <div className="hidden sm:block">
             <div
               ref={songPickerRef}
               className="relative flex items-center gap-2 rounded-full border border-white/15 bg-white/5 p-1 backdrop-blur"
@@ -1133,91 +1129,87 @@ export default function Home() {
 
           {songName ? (
             <>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                  {t("transport.tempo")}
-                </span>
-                <div className="flex items-center gap-2">
-                  <input
-                    key="song-bpm"
-                    type="number"
-                    step={0.5}
-                    min={120}
-                    max={260}
-                    value={songBpm ?? ""}
-                    placeholder={analyzing ? "…" : "bpm"}
-                    disabled={autoTempo}
-                    onChange={(e) =>
-                      setSongBpm(Number(e.target.value) || null)
-                    }
-                    className="w-20 rounded-full border border-white/15 bg-transparent px-3 py-1 text-center text-sm text-hueso outline-none focus:border-mango/60 disabled:opacity-60"
-                  />
-                  <button
-                    onClick={() => setAutoTempo((a) => !a)}
-                    title="Seguir el tempo en vivo"
-                    className={[
-                      "rounded-full border px-3 py-1 text-xs transition-colors",
-                      autoTempo
-                        ? "border-mar/60 bg-mar/15 text-mar"
-                        : "border-white/15 text-hueso/40",
-                    ].join(" ")}
-                  >
-                    auto
-                  </button>
-                </div>
+              {/* tempo: input + auto, sin etiqueta (tooltip) */}
+              <div
+                className="flex items-center gap-1.5"
+                title={t("transport.tempo")}
+              >
+                <input
+                  key="song-bpm"
+                  type="number"
+                  step={0.5}
+                  min={120}
+                  max={260}
+                  value={songBpm ?? ""}
+                  placeholder={analyzing ? "…" : "bpm"}
+                  disabled={autoTempo}
+                  onChange={(e) => setSongBpm(Number(e.target.value) || null)}
+                  className="w-18 rounded-full border border-white/15 bg-transparent px-2 py-0.5 text-center text-sm text-hueso outline-none focus:border-mango/60 disabled:opacity-60"
+                />
+                <button
+                  onClick={() => setAutoTempo((a) => !a)}
+                  title="Seguir el tempo en vivo"
+                  className={[
+                    "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                    autoTempo
+                      ? "border-mar/60 bg-mar/15 text-mar"
+                      : "border-white/15 text-hueso/40",
+                  ].join(" ")}
+                >
+                  auto
+                </button>
               </div>
-              <div className="flex min-w-56 flex-col items-center gap-1">
-                <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                  {t("transport.position")}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => seekSong(songTime - 10)}
-                    aria-label={t("transport.back10")}
-                    className="rounded-full border border-white/15 px-3 py-1 text-xs text-hueso/60 transition-colors hover:text-hueso"
-                  >
-                    {t("transport.back10")}
-                  </button>
-                  <input
-                    key="song-position"
-                    type="range"
-                    min={0}
-                    max={songSeekMax || 1}
-                    step={0.1}
-                    value={Math.min(songTime, songSeekMax || 0)}
-                    onChange={(e) => seekSong(Number(e.target.value))}
-                    className="w-36 accent-mango"
-                  />
-                </div>
-                <span className="text-xs text-hueso/45">
+
+              {/* posición: −10s + slider + reloj, todo en línea */}
+              <div
+                className="flex items-center gap-2"
+                title={t("transport.position")}
+              >
+                <button
+                  onClick={() => seekSong(songTime - 10)}
+                  aria-label={t("transport.back10")}
+                  className="rounded-full border border-white/15 px-2.5 py-0.5 text-xs text-hueso/60 transition-colors hover:text-hueso"
+                >
+                  {t("transport.back10")}
+                </button>
+                <input
+                  key="song-position"
+                  type="range"
+                  min={0}
+                  max={songSeekMax || 1}
+                  step={0.1}
+                  value={Math.min(songTime, songSeekMax || 0)}
+                  onChange={(e) => seekSong(Number(e.target.value))}
+                  className="w-28 accent-mango sm:w-36"
+                />
+                <span className="text-[11px] whitespace-nowrap tabular-nums text-hueso/45">
                   {formatClock(songTime)} / {formatClock(songDuration)}
                 </span>
               </div>
+
               {playing && (
                 <button
                   onClick={tapOne}
-                  className="rounded-full bg-mango px-4 py-1.5 text-sm font-semibold text-night transition-transform hover:scale-105 active:scale-95"
+                  className="rounded-full bg-mango px-3.5 py-1 text-sm font-semibold text-night transition-transform hover:scale-105 active:scale-95"
                 >
                   {t("transport.theOne")}
                 </button>
               )}
-              <span className="max-w-40 truncate text-sm text-hueso/60">
-                {songName}
-              </span>
               <button
                 onClick={clearSong}
                 aria-label={t("transport.removeSong")}
-                className="text-hueso/40 transition-colors hover:text-rosa"
+                title={t("transport.removeSong")}
+                className="hidden text-hueso/40 transition-colors hover:text-rosa sm:block"
               >
                 ✕
               </button>
             </>
           ) : (
             <>
-              <label className="flex flex-col items-center gap-1">
-                <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                  {t("transport.tempo")} · {bpm} bpm
-                </span>
+              <label
+                className="flex items-center gap-2"
+                title={t("transport.tempo")}
+              >
                 <input
                   key="metronome-bpm"
                   type="range"
@@ -1225,10 +1217,13 @@ export default function Home() {
                   max={240}
                   value={bpm}
                   onChange={(e) => setBpm(Number(e.target.value))}
-                  className="w-40 accent-mango"
+                  className="w-32 accent-mango sm:w-40"
                 />
+                <span className="text-xs whitespace-nowrap tabular-nums text-hueso/50">
+                  {bpm} bpm
+                </span>
               </label>
-              <label className="hidden cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20 sm:block">
+              <label className="hidden cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-3.5 py-1 text-sm text-mar transition-colors hover:bg-mar/20 sm:block">
                 {t("transport.upload")}
                 <input
                   key="upload-file"
@@ -1241,26 +1236,24 @@ export default function Home() {
             </>
           )}
 
-          <div className="hidden flex-col items-center gap-1 sm:flex">
-            <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-              {t("transport.timesX")}
-            </span>
-            <div className="flex overflow-hidden rounded-full border border-white/15">
-              {[1, 2, 4].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setCallEveryBars(n)}
-                  className={[
-                    "px-3.5 py-1 text-sm transition-colors",
-                    callEveryBars === n
-                      ? "bg-mar font-semibold text-night"
-                      : "text-hueso/60 hover:text-hueso",
-                  ].join(" ")}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+          <div
+            className="hidden overflow-hidden rounded-full border border-white/15 sm:flex"
+            title={t("transport.timesX")}
+          >
+            {[1, 2, 4].map((n) => (
+              <button
+                key={n}
+                onClick={() => setCallEveryBars(n)}
+                className={[
+                  "px-3 py-0.5 text-sm transition-colors",
+                  callEveryBars === n
+                    ? "bg-mar font-semibold text-night"
+                    : "text-hueso/60 hover:text-hueso",
+                ].join(" ")}
+              >
+                {n}
+              </button>
+            ))}
           </div>
 
           <button
