@@ -30,6 +30,14 @@ const DURATIONS_STORAGE_KEY = "timba-durations";
 
 type Mode = "song" | "metronome";
 
+function formatClock(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const whole = Math.floor(seconds);
+  const minutes = Math.floor(whole / 60);
+  const rest = whole % 60;
+  return `${minutes}:${rest.toString().padStart(2, "0")}`;
+}
+
 /** Group the flat call queue back into combos (consecutive items share combo). */
 function groupUpcoming(items: QueueItem[]): string[][] {
   const groups: string[][] = [];
@@ -96,6 +104,8 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState(false);
   const [autoTempo, setAutoTempo] = useState(true);
   const [songLevel, setSongLevel] = useState(0);
+  const [songTime, setSongTime] = useState(0);
+  const [songDuration, setSongDuration] = useState(0);
 
   /* engine refs */
   const lastLevelAtRef = useRef(0);
@@ -172,6 +182,30 @@ export default function Home() {
       localStorage.setItem(DURATIONS_STORAGE_KEY, JSON.stringify(durations));
     }
   }, [durations, durationsLoaded]);
+
+  useEffect(() => {
+    const audio = audioElRef.current;
+    if (!songName || !audio) return;
+
+    const updateTime = () => setSongTime(audio.currentTime || 0);
+    const updateDuration = () =>
+      setSongDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+
+    updateTime();
+    updateDuration();
+    audio.addEventListener("timeupdate", updateTime);
+    audio.addEventListener("seeking", updateTime);
+    audio.addEventListener("seeked", updateTime);
+    audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("durationchange", updateDuration);
+    return () => {
+      audio.removeEventListener("timeupdate", updateTime);
+      audio.removeEventListener("seeking", updateTime);
+      audio.removeEventListener("seeked", updateTime);
+      audio.removeEventListener("loadedmetadata", updateDuration);
+      audio.removeEventListener("durationchange", updateDuration);
+    };
+  }, [songName]);
 
   /* ---- connection graph persistence ---- */
   useEffect(() => {
@@ -461,6 +495,7 @@ export default function Home() {
     phaseErrorRef.current = 0;
     audioElRef.current?.pause();
     if (audioElRef.current) audioElRef.current.currentTime = 0;
+    setSongTime(0);
     void audioCtxRef.current?.resume();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     resetEngine();
@@ -481,6 +516,27 @@ export default function Home() {
     barRef.current = 0;
     phaseErrorRef.current = 0; // el toque humano manda: descartar correcciones
     nextBeatTimeRef.current = ctx.currentTime;
+  };
+
+  const seekSong = (targetSeconds: number) => {
+    const audio = audioElRef.current;
+    if (!audio) return;
+    const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    const next = Math.max(
+      0,
+      duration ? Math.min(targetSeconds, duration) : targetSeconds,
+    );
+    audio.currentTime = next;
+    setSongTime(next);
+
+    // La canción cambió de lugar; descartar fase vieja sin borrar la cola.
+    phaseErrorRef.current = 0;
+    lastPeakSeenRef.current = 0;
+    lastPhaseSeenRef.current = 0;
+    beatRef.current = 0;
+    setBeat(0);
+    const ctx = audioCtxRef.current;
+    if (ctx) nextBeatTimeRef.current = ctx.currentTime + 0.1;
   };
 
   const handleSongUpload = async (
@@ -517,6 +573,8 @@ export default function Home() {
     setMode("song");
     setSongName(file.name.replace(/\.[^.]+$/, ""));
     setSongBpm(null);
+    setSongTime(0);
+    setSongDuration(0);
 
     // offline estimate as a seed — playback can start right away meanwhile
     setAnalyzing(true);
@@ -546,6 +604,8 @@ export default function Home() {
     }
     setSongName(null);
     setSongBpm(null);
+    setSongTime(0);
+    setSongDuration(0);
     setAnalyzing(false);
   };
 
@@ -579,6 +639,7 @@ export default function Home() {
   const visibleEndsAt = visibleCall ? figureEndsAt(visibleCall) : undefined;
   const nextGroups = groupUpcoming(upcoming).slice(0, 3);
   const idleLabel = displayFigureName(currentStandingAt);
+  const songSeekMax = Math.max(songDuration, songTime, 0);
 
   return (
     <div className="relative flex h-dvh overflow-hidden">
@@ -841,6 +902,33 @@ export default function Home() {
                     auto
                   </button>
                 </div>
+              </div>
+              <div className="flex min-w-56 flex-col items-center gap-1">
+                <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
+                  {t("transport.position")}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => seekSong(songTime - 10)}
+                    aria-label={t("transport.back10")}
+                    className="rounded-full border border-white/15 px-3 py-1 text-xs text-hueso/60 transition-colors hover:text-hueso"
+                  >
+                    {t("transport.back10")}
+                  </button>
+                  <input
+                    key="song-position"
+                    type="range"
+                    min={0}
+                    max={songSeekMax || 1}
+                    step={0.1}
+                    value={Math.min(songTime, songSeekMax || 0)}
+                    onChange={(e) => seekSong(Number(e.target.value))}
+                    className="w-36 accent-mango"
+                  />
+                </div>
+                <span className="text-xs text-hueso/45">
+                  {formatClock(songTime)} / {formatClock(songDuration)}
+                </span>
               </div>
               {playing && (
                 <button

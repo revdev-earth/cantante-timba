@@ -60,6 +60,16 @@ const UI = {
     de: "Intensität",
     en: "intensity",
   },
+  "transport.position": {
+    es: "posición",
+    de: "Position",
+    en: "position",
+  },
+  "transport.back10": {
+    es: "−10 s",
+    de: "−10 s",
+    en: "−10 s",
+  },
   "transport.timesX": { es: "tiempo ×", de: "Tempo ×", en: "time ×" },
   "transport.voice": { es: "voz", de: "Stimme", en: "voice" },
   "transport.clave": { es: "clave", de: "Clave", en: "clave" },
