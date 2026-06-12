@@ -10,6 +10,8 @@ import {
   figureDuration,
 } from "@/lib/repertoire";
 import { figureEndsAt, isStartFigure, HUBS, type Hub } from "@/lib/glossary";
+import { useT } from "@/lib/i18n";
+import LanguageSwitcher from "@/components/language-switcher";
 import {
   comboEndsAt,
   comboOchos,
@@ -22,6 +24,7 @@ import {
 const DURATIONS_KEY = "timba-durations";
 
 export default function CombosPage() {
+  const t = useT();
   const [graph, setGraph] = useState<ConnectionGraph | null>(null);
   const [durations, setDurations] = useState<Record<string, number>>({});
   const [userCombos, setUserCombos] = useState<Combo[]>([]);
@@ -119,30 +122,33 @@ export default function CombosPage() {
       />
 
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-6">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-6 flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl tracking-wide uppercase md:text-4xl">
               <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
-                Combos
+                {t("combos.title")}
               </span>
             </h1>
             <p className="mt-1 text-xs tracking-[0.25em] text-hueso/40 uppercase">
-              arma combinaciones desde un hub
+              {t("combos.subtitle")}
             </p>
           </div>
-          <Link
-            href="/"
-            className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm text-hueso/70 backdrop-blur transition-colors hover:text-hueso"
-          >
-            ← volver
-          </Link>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <Link
+              href="/"
+              className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm text-hueso/70 backdrop-blur transition-colors hover:text-hueso"
+            >
+              {t("nav.back")}
+            </Link>
+          </div>
         </header>
 
         {/* ---- builder ---- */}
         <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-md">
           <div className="mb-4 flex flex-wrap items-center gap-3">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-              empezar en
+              {t("combos.startIn")}
             </span>
             <div className="flex overflow-hidden rounded-full border border-white/15">
               {HUBS.map((hub) => (
@@ -193,11 +199,13 @@ export default function CombosPage() {
           {figs.length > 0 && (
             <div className="mb-4 flex flex-wrap gap-4 text-xs tracking-wide text-hueso/50 uppercase">
               <span>
-                total{" "}
-                <span className="text-hueso">{totalOchos} ochos</span>
+                {t("combos.total")}{" "}
+                <span className="text-hueso">
+                  {totalOchos} {t("combos.ochos")}
+                </span>
               </span>
               <span>
-                termina en <span className="text-mar">{endsAt}</span>
+                {t("combos.endsAt")} <span className="text-mar">{endsAt}</span>
               </span>
             </div>
           )}
@@ -206,8 +214,8 @@ export default function CombosPage() {
           <div className="mb-3 flex items-center justify-between">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
               {freeMode
-                ? "todas las figuras"
-                : `desde ${standing} se puede`}
+                ? t("combos.allFigures")
+                : `${t("combos.from")} ${standing} ${t("combos.fromYouCan")}`}
             </span>
             <button
               onClick={() => setFreeMode((v) => !v)}
@@ -218,16 +226,13 @@ export default function CombosPage() {
                   : "border-white/15 text-hueso/50 hover:text-hueso",
               ].join(" ")}
             >
-              libre
+              {t("combos.free")}
             </button>
           </div>
 
           <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto">
             {suggestions.length === 0 ? (
-              <p className="text-sm text-hueso/40">
-                no hay salidas conectadas desde {standing} — activa “libre” para
-                agregar cualquier figura
-              </p>
+              <p className="text-sm text-hueso/40">{t("combos.noExits")}</p>
             ) : (
               suggestions.map((f) => (
                 <button
@@ -254,21 +259,21 @@ export default function CombosPage() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="nombre del combo (opcional)"
+              placeholder={t("combos.namePlaceholder")}
               className="min-w-48 flex-1 rounded-full border border-white/15 bg-transparent px-4 py-1.5 text-sm text-hueso outline-none placeholder:text-hueso/30 focus:border-mango/60"
             />
             <button
               onClick={clearBuilder}
               className="text-xs tracking-widest text-hueso/40 uppercase transition-colors hover:text-hueso"
             >
-              limpiar
+              {t("combos.clear")}
             </button>
             <button
               onClick={saveCombo}
               disabled={figs.length < 2}
               className="rounded-full bg-mango px-5 py-2 text-sm font-semibold text-night transition-transform hover:scale-105 active:scale-95 disabled:opacity-30"
             >
-              {editingId ? "actualizar" : "guardar combo"}
+              {editingId ? t("combos.update") : t("combos.save")}
             </button>
           </div>
         </section>
@@ -277,7 +282,7 @@ export default function CombosPage() {
         {HUBS.map((hub) => (
           <section key={hub} className="mb-6">
             <h2 className="mb-3 font-call text-xl text-hueso/80">
-              Desde {hub}
+              {t("combos.fromHub")} {hub}
             </h2>
             <div className="flex flex-col gap-2">
               {byHub(hub).map((combo) => {
@@ -310,7 +315,7 @@ export default function CombosPage() {
                       ))}
                     </div>
                     <span className="text-xs whitespace-nowrap text-hueso/40">
-                      {comboOchos(combo, durations)} ochos · ↘{" "}
+                      {comboOchos(combo, durations)} {t("combos.ochos")} · ↘{" "}
                       <span className="text-mar">{comboEndsAt(combo)}</span>
                     </span>
                     <div className="flex gap-2 text-xs tracking-widest uppercase">
@@ -318,14 +323,14 @@ export default function CombosPage() {
                         onClick={() => editCombo(combo, !isUser)}
                         className="text-hueso/40 transition-colors hover:text-mango"
                       >
-                        {isUser ? "editar" : "copiar"}
+                        {isUser ? t("combos.edit") : t("combos.copy")}
                       </button>
                       {isUser && (
                         <button
                           onClick={() => deleteCombo(combo.id)}
                           className="text-hueso/40 transition-colors hover:text-rosa"
                         >
-                          borrar
+                          {t("combos.delete")}
                         </button>
                       )}
                     </div>

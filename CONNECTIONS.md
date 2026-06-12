@@ -97,7 +97,7 @@ Va a:
 - Exhibela
 - Arriba
 - Abajo
-- Pa dentro pa fuera
+- Pa dentro y pa fuera
 - Sabrosura
 - Saloneo
 - Camina la rueda
@@ -134,17 +134,16 @@ Llega a `Básico` y lleva un `Dile que no` implícito. Aplica para:
 
 ### Camina la rueda
 
-Va a:
+Termina en Guapeala (gira con la rueda dando guapeala). Va a:
 
 - Saluda la rueda
 - Ni pa ti ni pa mi
 
 ### Saluda la rueda
 
-Va a:
-
-- Fly
-- Fly doble
+Termina en Guapeala. Se llega desde Camina la rueda. Como queda en Guapeala,
+desde aquí salen las vueltas de Guapeala (Fly, Fly doble, etc.). Fly no se
+conecta directo desde Saluda: se pasa por el estado Guapeala.
 
 ### Todos americanos
 
@@ -173,9 +172,9 @@ Va a:
 - 70 por abajo
 - Sombrero
 - Sombrero doble
+- Sombrero complicado
 - Sombrero por abajo
 - Sombrero por atrás
-- Sombrero complicado
 - Tijera simple
 - Fly
 - Fly doble

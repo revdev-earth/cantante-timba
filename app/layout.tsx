@@ -4,6 +4,7 @@ import "@fontsource/shrikhand/400.css";
 import "@fontsource/archivo/400.css";
 import "@fontsource/archivo/600.css";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Timba Cantante — tu cantante de rueda",
@@ -18,7 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full">
-      <body className="font-body min-h-full antialiased">{children}</body>
+      <body className="font-body min-h-full antialiased">
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

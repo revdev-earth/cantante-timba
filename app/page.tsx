@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/i18n";
+import LanguageSwitcher from "@/components/language-switcher";
 import { detectBpm } from "@/lib/beat-detection";
 import { LiveBeatTracker } from "@/lib/live-beat-tracker";
 import {
   defaultGraph,
-  graphFigures,
   loadGraph,
   neighbours,
   type ConnectionGraph,
@@ -16,7 +17,6 @@ import {
   comboKey,
   displayFigureName,
   displayRepertoireItem,
-  expandItem,
   figureDuration,
   type QueueItem,
 } from "@/lib/repertoire";
@@ -53,6 +53,7 @@ function groupUpcoming(items: QueueItem[]): string[][] {
 type PracticeMode = "random" | "graph";
 
 export default function Home() {
+  const t = useT();
   /* transport */
   const [mode, setMode] = useState<Mode>("metronome");
   const [playing, setPlaying] = useState(false);
@@ -538,8 +539,7 @@ export default function Home() {
   const visibleImplicit = visibleCall ? figureImplies(visibleCall) : undefined;
   const visibleEndsAt = visibleCall ? figureEndsAt(visibleCall) : undefined;
   const nextGroups = groupUpcoming(upcoming).slice(0, 3);
-  const idleLabel =
-    practiceMode === "graph" ? displayFigureName(currentStandingAt) : "listo";
+  const idleLabel = displayFigureName(currentStandingAt);
 
   return (
     <div className="relative flex h-dvh overflow-hidden">
@@ -574,13 +574,13 @@ export default function Home() {
             <div className="mx-auto flex overflow-hidden rounded-full border border-white/15 bg-white/5 backdrop-blur">
               {(
                 [
-                  ["song", "Canción"],
-                  ["metronome", "Sin Canción"],
+                  ["song", t("mode.song")],
+                  ["metronome", t("mode.noSong")],
                 ] as const
               ).map(([value, label]) => (
                 <button
                   key={value}
-                  onClick={() => switchMode(value)}
+                  onClick={() => switchMode(value as Mode)}
                   className={[
                     "px-5 py-1.5 text-sm transition-colors",
                     mode === value
@@ -597,14 +597,15 @@ export default function Home() {
               href="/combos"
               className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso"
             >
-              combos
+              {t("nav.combos")}
             </Link>
             <Link
               href="/mapa"
               className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso"
             >
-              mapa
+              {t("nav.map")}
             </Link>
+            <LanguageSwitcher />
           </div>
 
         </header>
@@ -613,15 +614,15 @@ export default function Home() {
         <div className="z-10 min-h-0 flex-1 px-2 pb-2">
           <div className="flex h-full flex-col items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-night-deep/30 px-4 text-center backdrop-blur-sm">
             <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs tracking-[0.22em] text-hueso/40 uppercase">
-              <span>conexiones</span>
+              <span>{t("status.connections")}</span>
               <span>·</span>
-              <span>{mode === "song" ? "canción" : "sin canción"}</span>
+              <span>{mode === "song" ? t("status.withSong") : t("status.noSong")}</span>
               <span>·</span>
               <Link
                 href="/mapa"
                 className="text-mar transition-colors hover:text-hueso"
               >
-                abrir mapa
+                {t("status.openMap")}
               </Link>
             </div>
 
@@ -676,17 +677,17 @@ export default function Home() {
                 )}
                 {visibleImplicit && (
                   <span className="rounded-full border border-mango/25 bg-mango/10 px-3 py-1 text-xs text-mango/70">
-                    implícito: {displayFigureName(visibleImplicit)}
+                    {t("doc.implies")} {displayFigureName(visibleImplicit)}
                   </span>
                 )}
                 {visibleEndsAt && (
                   <span className="rounded-full border border-mar/20 bg-mar/10 px-3 py-1 text-xs text-mar/70">
-                    queda: {displayFigureName(visibleEndsAt)}
+                    {t("chip.ends")} {displayFigureName(visibleEndsAt)}
                   </span>
                 )}
-                {!visibleCall && practiceMode === "graph" && (
+                {!visibleCall && (
                   <span className="rounded-full border border-mar/20 bg-mar/10 px-3 py-1 text-xs text-mar/60">
-                    queda: {displayFigureName(currentStandingAt)}
+                    {t("chip.ends")} {displayFigureName(currentStandingAt)}
                   </span>
                 )}
               </div>
@@ -732,7 +733,7 @@ export default function Home() {
 
           <button
             onClick={stopAndReset}
-            aria-label="Reiniciar"
+            aria-label={t("transport.reset")}
             className="flex size-10 items-center justify-center rounded-full border border-white/15 text-sm text-hueso/60 transition-colors hover:text-hueso"
           >
             ↺
@@ -741,7 +742,7 @@ export default function Home() {
           {mode === "song" && songName && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                intensidad
+                {t("transport.intensity")}
               </span>
               <div className="h-2.5 w-32 overflow-hidden rounded-full bg-white/10">
                 <div
@@ -755,7 +756,7 @@ export default function Home() {
           {mode === "metronome" ? (
             <label className="flex flex-col items-center gap-1">
               <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                tempo · {bpm} bpm
+                {t("transport.tempo")} · {bpm} bpm
               </span>
               <input
                 key="metronome-bpm"
@@ -771,7 +772,7 @@ export default function Home() {
             <>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                  tempo
+                  {t("transport.tempo")}
                 </span>
                 <div className="flex items-center gap-2">
                   <input
@@ -807,7 +808,7 @@ export default function Home() {
                   onClick={tapOne}
                   className="rounded-full bg-mango px-4 py-1.5 text-sm font-semibold text-night transition-transform hover:scale-105 active:scale-95"
                 >
-                  ¡el 1 es ahora!
+                  {t("transport.theOne")}
                 </button>
               )}
               <span className="max-w-40 truncate text-sm text-hueso/60">
@@ -815,7 +816,7 @@ export default function Home() {
               </span>
               <button
                 onClick={clearSong}
-                aria-label="Quitar canción"
+                aria-label={t("transport.removeSong")}
                 className="text-hueso/40 transition-colors hover:text-rosa"
               >
                 ✕
@@ -823,7 +824,7 @@ export default function Home() {
             </>
           ) : (
             <label className="cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20">
-              ♫ subir canción
+              {t("transport.upload")}
               <input
                 key="upload-file"
                 type="file"
@@ -836,7 +837,7 @@ export default function Home() {
 
           <div className="flex flex-col items-center gap-1">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-              tiempo ×
+              {t("transport.timesX")}
             </span>
             <div className="flex overflow-hidden rounded-full border border-white/15">
               {[1, 2, 4].map((n) => (
@@ -866,7 +867,7 @@ export default function Home() {
                   : "border-white/15 text-hueso/40",
               ].join(" ")}
             >
-              voz
+              {t("transport.voice")}
             </button>
             <button
               onClick={() => setSoundOn((s) => !s)}
@@ -877,7 +878,7 @@ export default function Home() {
                   : "border-white/15 text-hueso/40",
               ].join(" ")}
             >
-              clave
+              {t("transport.clave")}
             </button>
           </div>
 
@@ -885,7 +886,8 @@ export default function Home() {
             onClick={() => setPanelOpen((p) => !p)}
             className="text-xs tracking-[0.2em] text-hueso/40 uppercase transition-colors hover:text-hueso/70"
           >
-            {panelOpen ? "▾ figuras" : "▸ figuras"}
+            {panelOpen ? "▾ " : "▸ "}
+            {t("transport.figures")}
           </button>
         </section>
 
@@ -894,7 +896,8 @@ export default function Home() {
           <div className="z-10 max-h-64 overflow-y-auto border-t border-white/10 bg-night-deep/60 px-4 py-4 backdrop-blur">
             <div className="mb-3 flex items-center justify-between text-xs tracking-widest text-hueso/40 uppercase">
               <span>
-                {enabledFigures.size} figuras · {enabledCombos.size} combinaciones
+                {enabledFigures.size} {t("transport.figures")} ·{" "}
+                {enabledCombos.size} {t("rep.combos")}
               </span>
               <div className="flex gap-4">
                 <button
@@ -904,7 +907,7 @@ export default function Home() {
                   }}
                   className="transition-colors hover:text-mango"
                 >
-                  todas
+                  {t("rep.all")}
                 </button>
                 <button
                   onClick={() => {
@@ -913,7 +916,7 @@ export default function Home() {
                   }}
                   className="transition-colors hover:text-rosa"
                 >
-                  ninguna
+                  {t("rep.none")}
                 </button>
               </div>
             </div>
@@ -939,7 +942,7 @@ export default function Home() {
             </div>
 
             <p className="mt-4 mb-2 text-xs tracking-[0.25em] text-hueso/40 uppercase">
-              combinaciones
+              {t("rep.combos")}
             </p>
             <div className="flex flex-wrap gap-2">
               {COMBOS.map((combo) => {

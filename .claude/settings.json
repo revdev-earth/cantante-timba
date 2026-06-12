@@ -17,7 +17,8 @@
       "Bash(lsof -ti:3000 -ti:3001)",
       "Read(//tmp/**)",
       "Bash(lsof -ti:3000)",
-      "Bash(pkill -f \"next dev\")"
+      "Bash(pkill -f \"next dev\")",
+      "Bash(grep -n \"siguen\\\\|intensidad\\\\|voz\\\\|clave\\\\|figuras\\\\|tiempo ×\\\\|todas\\\\|ninguna\\\\|combinaciones\\\\|tempo ·\\\\|tempo$\\\\|>tempo<\\\\|auto<\\\\|>voz<\\\\|>clave<\" /Users/rev/dev/timba-cantante/app/page.tsx)"
     ]
   }
 }

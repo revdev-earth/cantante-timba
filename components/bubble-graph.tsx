@@ -14,7 +14,9 @@ import {
   type Point,
 } from "@/lib/connections";
 import { displayFigureName } from "@/lib/repertoire";
-import { FIGURE_DOC, isStartFigure } from "@/lib/glossary";
+import { FIGURE_DOC, figureStartsAt, isStartFigure } from "@/lib/glossary";
+import { localizedNote } from "@/lib/glossary-i18n";
+import { useLang, useT } from "@/lib/i18n";
 
 type Interaction =
   | {
@@ -131,6 +133,8 @@ export default function BubbleGraph({
   onResetLayout,
   onClearEdges,
 }: BubbleGraphProps) {
+  const t = useT();
+  const { lang } = useLang();
   const [dragging, setDragging] = useState<string | null>(null);
   const [tempEdge, setTempEdge] = useState<{ from: Point; to: Point } | null>(
     null,
@@ -476,7 +480,7 @@ export default function BubbleGraph({
 
     try {
       await navigator.clipboard.writeText(payload);
-      setExportStatus("copiado");
+      setExportStatus(t("map.copied"));
     } catch {
       const url = URL.createObjectURL(
         new Blob([payload], { type: "application/json" }),
@@ -486,7 +490,7 @@ export default function BubbleGraph({
       link.download = "timba-connections-default.json";
       link.click();
       URL.revokeObjectURL(url);
-      setExportStatus("descargado");
+      setExportStatus(t("map.downloaded"));
     }
 
     window.setTimeout(() => setExportStatus(""), 1800);
@@ -501,7 +505,7 @@ export default function BubbleGraph({
   const doc = docFigure ? FIGURE_DOC[docFigure] : undefined;
   const docNote =
     docFigure !== null
-      ? (notes[docFigure] ?? doc?.note ?? "")
+      ? (notes[docFigure] ?? localizedNote(docFigure, lang) ?? "")
       : "";
   const docIncoming = docFigure ? incomingNeighbours(graph, docFigure) : [];
   const docOutgoing = docFigure ? neighbours(graph, docFigure) : [];
@@ -527,7 +531,7 @@ export default function BubbleGraph({
         {menuOpen && (
           <div className="absolute top-12 right-0 w-64 rounded-2xl border border-white/15 bg-night-deep/95 p-3 text-sm shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
             <p className="mb-2 px-1 text-xs tracking-[0.2em] text-hueso/40 uppercase">
-              nueva figura
+              {t("map.newFigure")}
             </p>
             <div className="mb-3 flex items-center gap-2">
               <input
@@ -536,7 +540,7 @@ export default function BubbleGraph({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") addNewFigure();
                 }}
-                placeholder="nombre…"
+                placeholder={t("map.name")}
                 className="min-w-0 flex-1 rounded-full border border-white/15 bg-transparent px-3 py-1.5 text-hueso outline-none placeholder:text-hueso/30 focus:border-mango/60"
               />
               <button
@@ -552,7 +556,7 @@ export default function BubbleGraph({
                 onClick={exportGraph}
                 className="flex items-center justify-between rounded-lg px-2 py-1.5 transition-colors hover:bg-white/5 hover:text-mar"
               >
-                <span>exportar</span>
+                <span>{t("map.export")}</span>
                 {exportStatus && (
                   <span className="text-xs text-mar">{exportStatus}</span>
                 )}
@@ -561,16 +565,16 @@ export default function BubbleGraph({
                 onClick={onResetLayout}
                 className="rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5 hover:text-mango"
               >
-                organizar
+                {t("map.organize")}
               </button>
               <button
                 onClick={onClearEdges}
                 className="rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5 hover:text-rosa"
               >
-                borrar enlaces
+                {t("map.clearEdges")}
               </button>
               <p className="px-2 pt-1 text-xs text-hueso/30">
-                {graph.edges.length} enlaces
+                {graph.edges.length} {t("map.links")}
               </p>
             </div>
           </div>
@@ -901,7 +905,7 @@ export default function BubbleGraph({
                 selectedRef.current = null;
                 setSelectedFigure(null);
               }}
-              aria-label="Cerrar"
+              aria-label={t("doc.close")}
               className="text-hueso/40 transition-colors hover:text-hueso"
             >
               ✕
@@ -911,17 +915,25 @@ export default function BubbleGraph({
           <div className="mb-2 flex flex-wrap gap-1.5 text-[11px]">
             {isStartFigure(docFigure) && (
               <span className="rounded-full border border-mango/50 bg-mango/10 px-2 py-0.5 text-mango">
-                ▶ punto de inicio
+                {t("doc.start")}
               </span>
             )}
+            {figureStartsAt(docFigure).map((start) => (
+              <span
+                key={`start-${start}`}
+                className="rounded-full border border-mango/40 bg-mango/10 px-2 py-0.5 text-mango/80"
+              >
+                {t("doc.startsAt")} {start}
+              </span>
+            ))}
             {doc?.endsAt && (
               <span className="rounded-full border border-mar/50 bg-mar/10 px-2 py-0.5 text-mar">
-                termina en {doc.endsAt}
+                {t("doc.endsAt")} {doc.endsAt}
               </span>
             )}
             {doc?.implies && (
               <span className="rounded-full border border-white/15 px-2 py-0.5 text-hueso/60">
-                lleva implícito: {doc.implies}
+                {t("doc.implies")} {doc.implies}
               </span>
             )}
             <span className="rounded-full border border-white/10 px-2 py-0.5 text-hueso/40">
@@ -932,7 +944,7 @@ export default function BubbleGraph({
           <div className="mb-3 grid gap-2 text-[11px]">
             <div>
               <p className="mb-1 tracking-[0.18em] text-hueso/35 uppercase">
-                viene de
+                {t("doc.comesFrom")}
               </p>
               <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto">
                 {docIncoming.length > 0 ? (
@@ -945,14 +957,14 @@ export default function BubbleGraph({
                     </span>
                   ))
                 ) : (
-                  <span className="text-hueso/30">sin entradas</span>
+                  <span className="text-hueso/30">{t("doc.noIncoming")}</span>
                 )}
               </div>
             </div>
 
             <div>
               <p className="mb-1 tracking-[0.18em] text-hueso/35 uppercase">
-                va a
+                {t("doc.goesTo")}
               </p>
               <div className="flex max-h-16 flex-wrap gap-1 overflow-y-auto">
                 {docOutgoing.length > 0 ? (
@@ -965,7 +977,7 @@ export default function BubbleGraph({
                     </span>
                   ))
                 ) : (
-                  <span className="text-hueso/30">sin salidas</span>
+                  <span className="text-hueso/30">{t("doc.noOutgoing")}</span>
                 )}
               </div>
             </div>
@@ -975,13 +987,13 @@ export default function BubbleGraph({
             <textarea
               value={docNote}
               onChange={(e) => onSetNote(docFigure, e.target.value)}
-              placeholder="describe la figura para aprender…"
+              placeholder={t("doc.placeholder")}
               rows={4}
               className="w-full resize-none rounded-lg border border-white/15 bg-transparent p-2 text-sm text-hueso/90 outline-none placeholder:text-hueso/30 focus:border-mango/60"
             />
           ) : (
             <p className="text-sm leading-relaxed text-hueso/70">
-              {docNote || "Sin descripción todavía. Entra a editar para agregarla."}
+              {docNote || t("doc.empty")}
             </p>
           )}
         </div>

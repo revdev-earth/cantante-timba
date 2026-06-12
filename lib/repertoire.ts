@@ -20,7 +20,7 @@ export const FIGURES = [
   "Arriba",
   "Abajo",
   "Tarro",
-  "Pa dentro pa fuera",
+  "Pa dentro y pa fuera",
   "Camina la rueda",
   "Saluda la rueda",
   "Salúdate",

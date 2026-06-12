@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import BubbleGraph from "@/components/bubble-graph";
+import LanguageSwitcher from "@/components/language-switcher";
+import { useT } from "@/lib/i18n";
 import {
   defaultGraph,
   graphFigures,
@@ -57,6 +59,7 @@ function wantsTextUndo(target: EventTarget | null) {
 }
 
 export default function FigureMapView() {
+  const t = useT();
   const editing = true; // edición siempre activa; las opciones van en el engranaje
   const [graph, setGraph] = useState<ConnectionGraph>(() => defaultGraph());
   const [graphLoaded, setGraphLoaded] = useState(false);
@@ -231,7 +234,7 @@ export default function FigureMapView() {
       <header className="z-10 flex flex-wrap items-center gap-3 border-b border-white/10 bg-night-deep/45 px-4 py-3 backdrop-blur">
         <h1 className="font-display text-2xl tracking-wide uppercase">
           <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
-            Mapa de figuras
+            {t("map.title")}
           </span>
         </h1>
         <nav className="ml-auto flex flex-wrap items-center gap-2">
@@ -239,20 +242,21 @@ export default function FigureMapView() {
             href="/"
             className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/60 transition-colors hover:text-hueso"
           >
-            cantante
+            {t("nav.caller")}
           </Link>
           <Link
             href="/combos"
             className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/60 transition-colors hover:text-hueso"
           >
-            combos
+            {t("nav.combos")}
           </Link>
           <button
             onClick={() => applyGraphChange((current) => organizeGraph(current))}
             className="rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:border-mango/40 hover:text-mango"
           >
-            organizar
+            {t("map.organize")}
           </button>
+          <LanguageSwitcher />
         </nav>
       </header>
 
