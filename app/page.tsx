@@ -924,7 +924,7 @@ export default function Home() {
 
             {/* una sola lista que decrece: el actual grande, los que siguen más chicos */}
             <div className="flex w-full max-w-5xl flex-col items-center">
-              <h2 className="font-call min-h-[1.1em] text-7xl leading-none text-balance sm:text-8xl md:text-9xl">
+              <h2 className="font-call w-full max-w-full px-2 text-center text-[clamp(2.6rem,13vw,8rem)] leading-none text-balance wrap-break-word min-h-[1.1em]">
                 {upcomingCall ? (
                   <span className="text-hueso/35">
                     {displayFigureName(upcomingCall)}
@@ -962,17 +962,17 @@ export default function Home() {
               </div>
 
               {nextGroups.length > 0 && (
-                <ol className="mt-10 flex flex-col items-center gap-3">
+                <ol className="mt-10 flex w-full flex-col items-center gap-3">
                   {nextGroups.map((group, index) => (
                     <li
                       key={`${group.join("-")}-${index}`}
                       className={[
-                        "font-call leading-tight text-balance",
+                        "font-call w-full max-w-full px-3 text-center leading-tight text-balance wrap-break-word",
                         index === 0
-                          ? "text-4xl text-hueso/65 sm:text-5xl"
+                          ? "text-[clamp(1.4rem,6.5vw,3rem)] text-hueso/65"
                           : index === 1
-                            ? "text-3xl text-hueso/40 sm:text-4xl"
-                            : "text-2xl text-hueso/25 sm:text-3xl",
+                            ? "text-[clamp(1.2rem,5.2vw,2.25rem)] text-hueso/40"
+                            : "text-[clamp(1rem,4.2vw,1.9rem)] text-hueso/25",
                       ].join(" ")}
                     >
                       {group.map(displayFigureName).join("  →  ")}
