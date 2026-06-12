@@ -306,12 +306,19 @@ export default function CombosPage() {
           {/* sequence */}
           <div className="mb-4 min-h-11 rounded-2xl border border-white/10 bg-black/10 p-3">
             <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-mango/50 bg-mango/10 px-3 py-1 text-sm text-mango">
-              ▶ {start}
+            <span className="flex items-center gap-2 rounded-full border border-mango/50 bg-mango/10 px-3 py-1 text-sm text-mango">
+              <span
+                aria-hidden
+                className="h-0 w-0 border-y-[5px] border-y-transparent border-l-[8px] border-l-current"
+              />
+              {start}
             </span>
             {figs.map((f, i) => (
               <span key={`${f}-${i}`} className="flex items-center gap-2">
-                <span className="text-hueso/30">→</span>
+                <span
+                  aria-hidden
+                  className="h-px w-4 rounded-full bg-hueso/25"
+                />
                 <span className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-sm text-hueso">
                   {displayFigureName(f)}
                   <span className="text-[10px] text-mar">{ochosOf(f)}×8</span>
@@ -322,9 +329,9 @@ export default function CombosPage() {
               <button
                 onClick={() => setFigs(figs.slice(0, -1))}
                 aria-label="Quitar última"
-                className="ml-1 text-hueso/40 transition-colors hover:text-rosa"
+                className="ml-1 grid size-7 place-items-center rounded-full border border-white/15 text-hueso/40 transition-colors hover:text-rosa"
               >
-                ⌫
+                <span aria-hidden className="h-px w-3 rounded-full bg-current" />
               </button>
             )}
             </div>
@@ -380,7 +387,7 @@ export default function CombosPage() {
                   </span>
                   {figureEndsAt(f) && (
                     <span className="text-[10px] text-mar/70">
-                      ↘{figureEndsAt(f)}
+                      {t("combos.endsAt")} {figureEndsAt(f)}
                     </span>
                   )}
                 </button>
@@ -432,7 +439,12 @@ export default function CombosPage() {
                           key={`${f}-${i}`}
                           className="flex items-center gap-1.5"
                         >
-                          {i > 0 && <span className="text-hueso/30">→</span>}
+                          {i > 0 && (
+                            <span
+                              aria-hidden
+                              className="h-px w-3 rounded-full bg-hueso/25"
+                            />
+                          )}
                           <span
                             className={
                               isStartFigure(f)
@@ -449,7 +461,8 @@ export default function CombosPage() {
                       ))}
                     </div>
                     <span className="text-xs whitespace-nowrap text-hueso/40">
-                      {comboOchos(combo, durations)} {t("combos.ochos")} · ↘{" "}
+                      {comboOchos(combo, durations)} {t("combos.ochos")} ·{" "}
+                      {t("combos.endsAt")}{" "}
                       <span className="text-mar">{comboEndsAt(combo)}</span>
                     </span>
                     <div className="flex gap-2 text-xs tracking-widest uppercase">

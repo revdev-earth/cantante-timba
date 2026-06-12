@@ -89,9 +89,9 @@ const UI = {
     en: "combinations",
   },
   "doc.start": {
-    es: "▶ punto de inicio",
-    de: "▶ Startpunkt",
-    en: "▶ start point",
+    es: "punto de inicio",
+    de: "Startpunkt",
+    en: "start point",
   },
   "doc.startsAt": { es: "empieza en", de: "beginnt in", en: "starts in" },
   "doc.endsAt": { es: "termina en", de: "endet in", en: "ends at" },

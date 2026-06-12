@@ -874,13 +874,23 @@ export default function Home() {
             disabled={!canPlay}
             aria-label={playing ? "Pausar" : "Empezar"}
             className={[
-              "flex size-14 items-center justify-center rounded-full text-xl text-night transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
+              "flex size-14 items-center justify-center rounded-full text-night transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
               playing
                 ? "bg-rosa shadow-[0_0_36px] shadow-rosa/40"
                 : "bg-mango shadow-[0_0_36px] shadow-mango/40",
             ].join(" ")}
           >
-            {playing ? "❚❚" : "▶"}
+            {playing ? (
+              <span aria-hidden className="flex items-center gap-1.5">
+                <span className="h-5 w-1.5 rounded-full bg-current" />
+                <span className="h-5 w-1.5 rounded-full bg-current" />
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className="ml-1 h-0 w-0 border-y-[10px] border-y-transparent border-l-[16px] border-l-current"
+              />
+            )}
           </button>
 
           <button
