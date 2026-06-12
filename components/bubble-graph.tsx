@@ -31,8 +31,6 @@ type Interaction =
       figures: string[];
       startPositions: Record<string, Point>;
     }
-  | { kind: "connect"; from: string; point: Point }
-  | { kind: "select"; start: Point; point: Point }
   | {
       kind: "pan";
       startX: number;
@@ -72,29 +70,6 @@ const ZOOM_LINE_HEIGHT = 16;
 
 const clampScale = (value: number) =>
   Math.max(MIN_SCALE, Math.min(MAX_SCALE, value));
-
-function normalizedRect(a: Point, b: Point) {
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  return {
-    x,
-    y,
-    width: Math.abs(a.x - b.x),
-    height: Math.abs(a.y - b.y),
-  };
-}
-
-function rectIntersectsNode(
-  rect: ReturnType<typeof normalizedRect>,
-  point: Point,
-) {
-  return (
-    point.x + NODE_SIZE.width >= rect.x &&
-    point.x <= rect.x + rect.width &&
-    point.y + NODE_SIZE.height >= rect.y &&
-    point.y <= rect.y + rect.height
-  );
-}
 
 function wheelDeltaPixels(e: WheelEvent, pageHeight: number) {
   const unit =
@@ -136,22 +111,13 @@ export default function BubbleGraph({
   const t = useT();
   const { lang } = useLang();
   const [dragging, setDragging] = useState<string | null>(null);
-  const [tempEdge, setTempEdge] = useState<{ from: Point; to: Point } | null>(
-    null,
-  );
   const [hoverEdge, setHoverEdge] = useState<number | null>(null);
   const [confirmEdge, setConfirmEdge] = useState<number | null>(null);
   const [newName, setNewName] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedFigure, setSelectedFigure] = useState<string | null>(null);
-  const [selectedFigures, setSelectedFigures] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [hoverFigure, setHoverFigure] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState("");
-  const [selectionRect, setSelectionRect] = useState<ReturnType<
-    typeof normalizedRect
-  > | null>(null);
   const [scale, setScale] = useState(1);
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -160,16 +126,14 @@ export default function BubbleGraph({
   const graphRef = useRef(graph);
   const boundsRef = useRef(canvasBounds(graph.positions));
   const selectedRef = useRef<string | null>(null);
-  const selectedFiguresRef = useRef<Set<string>>(new Set());
   const scaleRef = useRef(scale);
 
   useLayoutEffect(() => {
     graphRef.current = graph;
     boundsRef.current = canvasBounds(graph.positions);
     selectedRef.current = selectedFigure;
-    selectedFiguresRef.current = selectedFigures;
     scaleRef.current = scale;
-  }, [graph, selectedFigure, selectedFigures, scale]);
+  }, [graph, selectedFigure, scale]);
 
   const toCanvas = useCallback((clientX: number, clientY: number): Point => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -222,106 +186,51 @@ export default function BubbleGraph({
 
       const p = toCanvas(e.clientX, e.clientY);
 
-      if (it.kind === "select") {
-        it.point = p;
-        setSelectionRect(normalizedRect(it.start, p));
-        return;
-      }
-
-      if (it.kind === "move") {
-        if (!it.moved) {
-          const dx = p.x - it.startX;
-          const dy = p.y - it.startY;
-          if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
-          if (!it.undoCaptured) {
-            onCaptureUndo();
-            it.undoCaptured = true;
-          }
-          it.moved = true;
-          setDragging(it.figure);
+      if (!it.moved) {
+        const dx = p.x - it.startX;
+        const dy = p.y - it.startY;
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+        if (!it.undoCaptured) {
+          onCaptureUndo();
+          it.undoCaptured = true;
         }
-        const g = graphRef.current;
-        const b = boundsRef.current;
-        const nextMain = {
-          x: p.x - it.offsetX - b.offsetX,
-          y: p.y - it.offsetY - b.offsetY,
-        };
-        const mainStart = it.startPositions[it.figure];
-        const delta = {
-          x: nextMain.x - mainStart.x,
-          y: nextMain.y - mainStart.y,
-        };
-        const positions = { ...g.positions };
-        for (const figure of it.figures) {
-          const start = it.startPositions[figure];
-          if (!start) continue;
-          positions[figure] = {
-            x: start.x + delta.x,
-            y: start.y + delta.y,
-          };
-        }
-        onChange({
-          ...g,
-          positions,
-        }, { recordHistory: false });
-      } else {
-        const b = boundsRef.current;
-        it.point = { x: p.x - b.offsetX, y: p.y - b.offsetY };
-        setTempEdge({
-          from: anchor(graphRef.current.positions[it.from], it.point),
-          to: it.point,
-        });
+        it.moved = true;
+        setDragging(it.figure);
       }
+      const g = graphRef.current;
+      const b = boundsRef.current;
+      const nextMain = {
+        x: p.x - it.offsetX - b.offsetX,
+        y: p.y - it.offsetY - b.offsetY,
+      };
+      const mainStart = it.startPositions[it.figure];
+      const delta = {
+        x: nextMain.x - mainStart.x,
+        y: nextMain.y - mainStart.y,
+      };
+      const positions = { ...g.positions };
+      for (const figure of it.figures) {
+        const start = it.startPositions[figure];
+        if (!start) continue;
+        positions[figure] = {
+          x: start.x + delta.x,
+          y: start.y + delta.y,
+        };
+      }
+      onChange({
+        ...g,
+        positions,
+      }, { recordHistory: false });
     };
 
-    const onUp = (e: PointerEvent) => {
+    const onUp = () => {
       const it = interactionRef.current;
       interactionRef.current = null;
       setDragging(null);
-      setTempEdge(null);
-      setSelectionRect(null);
 
       if (!it || it.kind === "pan") return;
 
-      if (it.kind === "select") {
-        const rect = normalizedRect(it.start, it.point);
-        if (rect.width < DRAG_THRESHOLD && rect.height < DRAG_THRESHOLD) {
-          setSelectedFigures(new Set());
-          return;
-        }
-        const b = boundsRef.current;
-        const selected = graphFigures(graphRef.current).filter((figure) => {
-          const point = graphRef.current.positions[figure];
-          if (!point) return false;
-          return rectIntersectsNode(rect, {
-            x: point.x + b.offsetX,
-            y: point.y + b.offsetY,
-          });
-        });
-        setSelectedFigures(new Set(selected));
-        selectedRef.current = null;
-        setSelectedFigure(null);
-        return;
-      }
-
-      if (it.kind === "connect") {
-        const target = document
-          .elementFromPoint(e.clientX, e.clientY)
-          ?.closest<HTMLElement>("[data-figure]");
-        const to = target?.dataset.figure;
-        if (!to || to === it.from) return;
-        addEdge(it.from, to);
-        return;
-      }
-
       if (it.kind === "move" && !it.moved) {
-        if (
-          selectedFiguresRef.current.size > 1 &&
-          selectedFiguresRef.current.has(it.figure)
-        ) {
-          return;
-        }
-        setSelectedFigures(new Set());
         selectOrConnect(it.figure);
       }
     };
@@ -394,19 +303,13 @@ export default function BubbleGraph({
     const p = toCanvas(e.clientX, e.clientY);
     const pos = graph.positions[figure];
     const b = canvasBounds(graph.positions);
-    const selected = selectedFigures.has(figure)
-      ? [...selectedFigures].filter((selectedFigure) => graph.positions[selectedFigure])
-      : [figure];
     const startPositions = Object.fromEntries(
-      selected.map((selectedFigure) => [
-        selectedFigure,
-        { ...graph.positions[selectedFigure] },
-      ]),
+      [[figure, { ...graph.positions[figure] }]],
     );
     interactionRef.current = {
       kind: "move",
       figure,
-      figures: selected,
+      figures: [figure],
       startPositions,
       offsetX: p.x - (pos.x + b.offsetX),
       offsetY: p.y - (pos.y + b.offsetY),
@@ -422,16 +325,6 @@ export default function BubbleGraph({
     const target = e.target as HTMLElement;
     if (target.closest("[data-figure]")) return;
     if (target.closest("button")) return;
-    if (editing) {
-      const point = toCanvas(e.clientX, e.clientY);
-      interactionRef.current = {
-        kind: "select",
-        start: point,
-        point,
-      };
-      setSelectionRect(normalizedRect(point, point));
-      return;
-    }
     const el = containerRef.current!;
     interactionRef.current = {
       kind: "pan",
@@ -439,18 +332,6 @@ export default function BubbleGraph({
       startY: e.clientY,
       scrollX: el.scrollLeft,
       scrollY: el.scrollTop,
-    };
-  };
-
-  const startConnect = (figure: string) => (e: React.PointerEvent) => {
-    e.stopPropagation();
-    if (e.button !== 0) return;
-    const p = toCanvas(e.clientX, e.clientY);
-    const b = canvasBounds(graph.positions);
-    interactionRef.current = {
-      kind: "connect",
-      from: figure,
-      point: { x: p.x - b.offsetX, y: p.y - b.offsetY },
     };
   };
 
@@ -498,8 +379,6 @@ export default function BubbleGraph({
 
   const bounds = canvasBounds(graph.positions);
   const focusedFigure = selectedFigure ?? hoverFigure ?? activeFigure;
-  const outgoing = (figure: string) =>
-    graph.edges.filter((e) => e.from === figure).length;
 
   const docFigure = selectedFigure ?? hoverFigure;
   const doc = docFigure ? FIGURE_DOC[docFigure] : undefined;
@@ -529,7 +408,7 @@ export default function BubbleGraph({
         </button>
 
         {menuOpen && (
-          <div className="absolute top-12 right-0 w-64 rounded-2xl border border-white/15 bg-night-deep/95 p-3 text-sm shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+          <div className="absolute top-12 right-0 w-64 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-white/15 bg-night-deep/95 p-3 text-sm shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
             <p className="mb-2 px-1 text-xs tracking-[0.2em] text-hueso/40 uppercase">
               {t("map.newFigure")}
             </p>
@@ -755,31 +634,7 @@ export default function BubbleGraph({
             );
           })}
 
-          {tempEdge && (
-            <line
-              x1={tempEdge.from.x + bounds.offsetX}
-              y1={tempEdge.from.y + bounds.offsetY}
-              x2={tempEdge.to.x + bounds.offsetX}
-              y2={tempEdge.to.y + bounds.offsetY}
-              stroke="var(--color-mar)"
-              strokeWidth={2.5}
-              strokeDasharray="6 5"
-              className="pointer-events-none"
-            />
-          )}
         </svg>
-
-        {selectionRect && (
-          <div
-            className="pointer-events-none absolute z-40 border border-mar/80 bg-mar/15 shadow-[0_0_24px_rgba(43,198,197,0.22)]"
-            style={{
-              left: selectionRect.x,
-              top: selectionRect.y,
-              width: selectionRect.width,
-              height: selectionRect.height,
-            }}
-          />
-        )}
 
         {/* bubbles */}
         {graphFigures(graph).map((figure) => {
@@ -787,12 +642,8 @@ export default function BubbleGraph({
           if (!pos) return null;
           const isActive = activeFigure === figure;
           const isPending = pendingFigure === figure && !isActive;
-          const isMultiSelected = selectedFigures.has(figure);
-          const isSelected = selectedFigure === figure || isMultiSelected;
-          const isGroupDragging =
-            dragging === figure ||
-            (!!dragging && selectedFigures.has(dragging) && isMultiSelected);
-          const count = outgoing(figure);
+          const isSelected = selectedFigure === figure;
+          const isDragging = dragging === figure;
           const custom = isCustomFigure(figure);
           return (
             <div
@@ -809,7 +660,7 @@ export default function BubbleGraph({
               }}
               className={[
                 "absolute flex touch-none items-center justify-center rounded-[50%] border px-3 text-center text-xs leading-tight select-none",
-                isGroupDragging
+                isDragging
                   ? "cursor-grabbing"
                   : isSelected
                     ? "cursor-pointer"
@@ -818,7 +669,7 @@ export default function BubbleGraph({
                   ? "z-20 scale-110 border-transparent bg-linear-to-br from-rosa via-flame to-mango font-semibold text-night shadow-[0_0_45px] shadow-flame/50"
                   : isPending
                     ? "z-20 scale-105 border-hueso/40 bg-white/12 text-hueso shadow-[0_0_28px] shadow-hueso/10"
-                    : isGroupDragging
+                    : isDragging
                       ? "z-20 border-mango/70 bg-night text-hueso/90 shadow-[0_0_30px] shadow-mango/30"
                       : isSelected
                         ? "z-30 scale-110 border-[#3b82f6] bg-[#3b82f6]/15 text-white shadow-[0_0_35px_rgba(59,130,246,0.5)]"
@@ -829,19 +680,6 @@ export default function BubbleGraph({
               <span className="max-w-full text-balance wrap-break-word">
                 {displayFigureName(figure)}
               </span>
-              {editing && count > 0 && (
-                <span className="absolute -top-1 -left-1 flex size-5 items-center justify-center rounded-full bg-mango text-[10px] font-bold text-night">
-                  {count}
-                </span>
-              )}
-              {editing && (
-                <button
-                  aria-label={`Conectar desde ${figure}`}
-                  onPointerDown={startConnect(figure)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute top-1/2 -right-2 size-5 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-night bg-mango transition-transform hover:scale-125"
-                />
-              )}
               {editing && custom && (
                 <button
                   aria-label={`Borrar ${figure}`}
@@ -895,7 +733,7 @@ export default function BubbleGraph({
 
       {/* documentación de la figura seleccionada — leíble y editable */}
       {docFigure && (
-        <div className="pointer-events-auto absolute bottom-3 left-3 z-40 w-72 rounded-2xl border border-white/15 bg-night-deep/90 p-4 shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <div className="pointer-events-auto absolute right-3 bottom-3 left-3 z-40 max-h-[45dvh] overflow-y-auto rounded-2xl border border-white/15 bg-night-deep/90 p-4 shadow-[0_0_40px_rgba(0,0,0,0.5)] backdrop-blur-xl sm:right-auto sm:w-72">
           <div className="mb-2 flex items-start justify-between gap-2">
             <h3 className="font-call text-lg leading-tight text-hueso">
               {displayFigureName(docFigure)}
