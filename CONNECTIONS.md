@@ -115,8 +115,6 @@ Va a:
 - `Arriba` → `Tarro`
 - `Arriba` → `Enchufla`
 - `Arriba` → `Dile que no`
-- `Abajo` → `Arriba`
-- `Abajo` → `Enchufla`
 - `Abajo` → `Dile que no`
 - `Tarro` → `Arriba`
 - `Tarro` → `Abajo`
@@ -127,6 +125,8 @@ Estas flechas son dirigidas: que `Tarro` pueda ir a `Abajo` no significa que
 `Tarro` no salta directo a figuras de `Guapeala` como `Directo pasando` a menos
 que esa flecha exista en el mapa; para eso normalmente primero se sale por
 `Dile que no`.
+
+Desde `Abajo` solo se sale con `Dile que no`.
 
 ### Dile que sí
 

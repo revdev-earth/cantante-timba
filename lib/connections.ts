@@ -288,8 +288,6 @@ const DEFAULT_EDGES: Edge[] = [
   { from: "Arriba", to: "Abajo" },
   { from: "Arriba", to: "Enchufla" },
   { from: "Arriba", to: "Dile que no" },
-  { from: "Abajo", to: "Arriba" },
-  { from: "Abajo", to: "Enchufla" },
   { from: "Abajo", to: "Dile que no" },
   { from: "Tarro", to: "Abajo" },
   { from: "Tarro", to: "Arriba" },
