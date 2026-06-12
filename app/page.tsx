@@ -63,7 +63,6 @@ type PracticeMode = "random" | "graph";
 export default function Home() {
   const t = useT();
   /* transport */
-  const [mode, setMode] = useState<Mode>("metronome");
   const [playing, setPlaying] = useState(false);
   const [beat, setBeat] = useState(0); // 0 = stopped
   const [bpm, setBpm] = useState(188);
@@ -107,6 +106,7 @@ export default function Home() {
   const [songLevel, setSongLevel] = useState(0);
   const [songTime, setSongTime] = useState(0);
   const [songDuration, setSongDuration] = useState(0);
+  const mode: Mode = songName ? "song" : "metronome";
 
   /* engine refs */
   const lastLevelAtRef = useRef(0);
@@ -512,12 +512,6 @@ export default function Home() {
     setSongLevel(0);
   };
 
-  const switchMode = (next: Mode) => {
-    if (next === mode) return;
-    stopAndReset();
-    setMode(next);
-  };
-
   /* re-anchor the count so "now" becomes the 1 */
   const tapOne = () => {
     const ctx = audioCtxRef.current;
@@ -580,7 +574,6 @@ export default function Home() {
     mediaSourceRef.current = source;
     trackerRef.current = new LiveBeatTracker(ctx, source);
 
-    setMode("song");
     setSongName(file.name.replace(/\.[^.]+$/, ""));
     setSongBpm(null);
     setSongTime(0);
@@ -698,29 +691,6 @@ export default function Home() {
               <LanguageSwitcher />
             </div>
 
-            {/* mode tabs */}
-            <div className="hidden overflow-hidden rounded-full border border-white/15 bg-white/5 backdrop-blur sm:mx-auto sm:flex sm:w-auto">
-              {(
-                [
-                  ["song", t("mode.song")],
-                  ["metronome", t("mode.noSong")],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  onClick={() => switchMode(value as Mode)}
-                  className={[
-                    "min-w-0 flex-1 px-3 py-1.5 text-sm transition-colors sm:flex-none sm:px-5",
-                    mode === value
-                      ? "bg-linear-to-r from-mango to-flame font-semibold text-night"
-                      : "text-hueso/60 hover:text-hueso",
-                  ].join(" ")}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
             <Link
               href="/combos"
               className="hidden rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso sm:block"
@@ -733,28 +703,6 @@ export default function Home() {
             >
               {t("nav.map")}
             </Link>
-          </div>
-
-          <div className="flex overflow-hidden rounded-full border border-white/15 bg-white/5 backdrop-blur sm:hidden">
-            {(
-              [
-                ["song", t("mode.song")],
-                ["metronome", t("mode.noSong")],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                onClick={() => switchMode(value as Mode)}
-                className={[
-                  "min-w-0 flex-1 px-3 py-1.5 text-sm transition-colors",
-                  mode === value
-                    ? "bg-linear-to-r from-mango to-flame font-semibold text-night"
-                    : "text-hueso/60 hover:text-hueso",
-                ].join(" ")}
-              >
-                {label}
-              </button>
-            ))}
           </div>
         </header>
 
@@ -957,22 +905,7 @@ export default function Home() {
             </div>
           )}
 
-          {mode === "metronome" ? (
-            <label className="flex flex-col items-center gap-1">
-              <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-                {t("transport.tempo")} · {bpm} bpm
-              </span>
-              <input
-                key="metronome-bpm"
-                type="range"
-                min={130}
-                max={240}
-                value={bpm}
-                onChange={(e) => setBpm(Number(e.target.value))}
-                className="w-40 accent-mango"
-              />
-            </label>
-          ) : songName ? (
+          {songName ? (
             <>
               <div className="flex flex-col items-center gap-1">
                 <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
@@ -1054,16 +987,32 @@ export default function Home() {
               </button>
             </>
           ) : (
-            <label className="cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20">
-              {t("transport.upload")}
-              <input
-                key="upload-file"
-                type="file"
-                accept="audio/*"
-                onChange={handleSongUpload}
-                className="hidden"
-              />
-            </label>
+            <>
+              <label className="flex flex-col items-center gap-1">
+                <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
+                  {t("transport.tempo")} · {bpm} bpm
+                </span>
+                <input
+                  key="metronome-bpm"
+                  type="range"
+                  min={130}
+                  max={240}
+                  value={bpm}
+                  onChange={(e) => setBpm(Number(e.target.value))}
+                  className="w-40 accent-mango"
+                />
+              </label>
+              <label className="cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20">
+                {t("transport.upload")}
+                <input
+                  key="upload-file"
+                  type="file"
+                  accept="audio/*"
+                  onChange={handleSongUpload}
+                  className="hidden"
+                />
+              </label>
+            </>
           )}
 
           <div className="flex flex-col items-center gap-1">
