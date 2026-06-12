@@ -36,6 +36,28 @@ const PRESET_SONGS = [
 ] as const;
 
 type Mode = "song" | "metronome";
+
+/** Icono de aleatorio: las flechas que se cruzan (shuffle). */
+function ShuffleIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M16 3h5v5" />
+      <path d="M4 20 21 3" />
+      <path d="M21 16v5h-5" />
+      <path d="m15 15 6 6" />
+      <path d="m4 4 5 5" />
+    </svg>
+  );
+}
 type PresetSong = (typeof PRESET_SONGS)[number];
 
 const presetSongUrl = (song: PresetSong) =>
@@ -167,6 +189,7 @@ export default function Home() {
   const lastPeakSeenRef = useRef(0);
   const lastPhaseSeenRef = useRef(0);
   const phaseErrorRef = useRef(0);
+  const loadTokenRef = useRef(0);
   const durationsRef = useRef(durations);
   const rafRef = useRef(0);
 
@@ -590,6 +613,11 @@ export default function Home() {
     arrayBuffer: () => Promise<ArrayBuffer>,
     options: { autoplay?: boolean; presetIndex?: number | null } = {},
   ) {
+    // token de carga: si llega otra carga (clic rápido, fin de canción),
+    // los callbacks de ésta quedan huérfanos y no tocan el estado
+    const token = ++loadTokenRef.current;
+    const isCurrent = () => loadTokenRef.current === token;
+
     if (playing) {
       setPlaying(false);
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
@@ -626,6 +654,7 @@ export default function Home() {
     nextBeatTimeRef.current = ctx.currentTime + 0.1;
 
     audio.addEventListener("ended", () => {
+      if (!isCurrent()) return; // canción vieja: ignorar
       const current = selectedPresetIndexRef.current;
       if (current === null) {
         setPlaying(false);
@@ -641,8 +670,14 @@ export default function Home() {
       pausedRef.current = false;
       void ctx.resume();
       void audio.play().then(
-        () => setPlaying(true),
-        () => setPlaying(false),
+        () => {
+          if (isCurrent()) setPlaying(true);
+        },
+        () => {
+          // el pause() de una carga nueva interrumpe play() (AbortError);
+          // solo apagar si esta carga sigue vigente
+          if (isCurrent()) setPlaying(false);
+        },
       );
     }
 
@@ -650,13 +685,14 @@ export default function Home() {
     setAnalyzing(true);
     try {
       const decoded = await ctx.decodeAudioData(await arrayBuffer());
+      if (!isCurrent()) return; // no sembrar el bpm de otra canción
       const seed = detectBpm(decoded);
       trackerRef.current?.seed(seed);
       setSongBpm((current) => current ?? seed);
     } catch {
       /* the live tracker will find the tempo anyway */
     } finally {
-      setAnalyzing(false);
+      if (isCurrent()) setAnalyzing(false);
     }
   }
 
@@ -984,9 +1020,11 @@ export default function Home() {
 
           <button
             onClick={() => setTransportSheetOpen(true)}
-            className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-hueso/70 transition-colors hover:text-hueso sm:hidden"
+            aria-label={t("transport.options")}
+            title={t("transport.options")}
+            className="flex size-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-lg text-hueso/70 transition-colors hover:text-hueso sm:hidden"
           >
-            {t("transport.options")}
+            ⚙
           </button>
 
           {mode === "song" && songName && (
@@ -1079,14 +1117,16 @@ export default function Home() {
 
               <button
                 onClick={() => setShuffleSongs((value) => !value)}
+                aria-label={t("transport.random")}
+                title={t("transport.random")}
                 className={[
-                  "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  "flex size-8 items-center justify-center rounded-full border transition-colors",
                   shuffleSongs
                     ? "border-mango/60 bg-mango/15 text-mango"
                     : "border-white/15 text-hueso/45 hover:text-hueso",
                 ].join(" ")}
               >
-                {t("transport.random")}
+                <ShuffleIcon className="size-4" />
               </button>
             </div>
           </div>
@@ -1273,14 +1313,16 @@ export default function Home() {
               </span>
               <button
                 onClick={() => setShuffleSongs((value) => !value)}
+                aria-label={t("transport.random")}
+                title={t("transport.random")}
                 className={[
-                  "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  "flex size-8 items-center justify-center rounded-full border transition-colors",
                   shuffleSongs
                     ? "border-mango/60 bg-mango/15 text-mango"
                     : "border-white/15 text-hueso/45",
                 ].join(" ")}
               >
-                {t("transport.random")}
+                <ShuffleIcon className="size-4" />
               </button>
             </div>
             <div className="grid gap-2">
