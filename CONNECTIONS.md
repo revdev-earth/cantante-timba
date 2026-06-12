@@ -3,6 +3,10 @@
 Fuente humana para editar el grafo default. El codigo en `lib/connections.ts`
 (`DEFAULT_EDGES` y `DEFAULT_POSITIONS`) debe reflejar este mapa.
 
+> La música detrás de todo esto (la clave, el tumbao, la campana, por qué la
+> timba engaña a los algoritmos y cómo lo resolvemos) está documentada en
+> **[TIMBA.md](TIMBA.md)** — en honor a los cubanos.
+
 Una arista `A → B` significa: despues de A, B es una figura natural para llamar.
 El modo "conexiones" camina este grafo.
 
@@ -74,8 +78,9 @@ Documentado hasta ahora:
 - **Patineta** → termina en Guapeala. Desde Patineta **solo** se puede seguir
   con `Cambio`, `Se fue` o `Dame`; ninguna otra figura sale de ahí. En Patineta
   el líder pasa al frente.
-- **Cambio**: invierte la Patineta — hace que la persona que sigue (folly) pase
-  al frente y el líder quede atrás.
+- **Manolín**: figura hermana de Patineta; usa la misma familia de salidas.
+- **Cambio**: invierte Patineta/Manolín. En el mapa vuelve a `Patineta` o
+  `Manolín` para poder seguir la secuencia.
 - **Se fue** → termina en Guapeala · lleva implícito Dile que no. Depende de
   quién va al frente:
   - líder al frente (Patineta): es como una enchufla para el hombre, luego una
@@ -108,7 +113,11 @@ Va a:
 ### Arriba / Tarro / Abajo
 
 - `Arriba` → `Tarro`
+- `Arriba` → `Enchufla`
+- `Arriba` → `Dile que no`
 - `Abajo` → `Arriba`
+- `Abajo` → `Enchufla`
+- `Abajo` → `Dile que no`
 - `Tarro` → `Arriba`
 - `Tarro` → `Abajo`
 
@@ -153,6 +162,18 @@ Va a:
 - Corazón
 - Dile que no
 
+### Corazón
+
+Vuelve a:
+
+- Todos americanos
+
+### Sabrosura
+
+Sale con:
+
+- Dile que no
+
 ### Guapeala
 
 Va a:
@@ -188,6 +209,7 @@ Va a:
 - Dame dos y una afuera
 - Dame una arriba
 - Patineta
+- Manolín
 - Dile que sí
 
 ### Dile que no
@@ -247,6 +269,21 @@ Solo va a (ninguna otra figura sale de Patineta):
 - Cambio
 - Se fue
 - Dame
+
+### Manolín
+
+Figura hermana de Patineta. Va a:
+
+- Cambio
+- Se fue
+- Dame
+
+### Cambio
+
+Va a:
+
+- Patineta
+- Manolín
 
 ### Se fue
 
@@ -321,12 +358,15 @@ clic izq +1 / clic der -1, rango 1-8) y se guarda en localStorage
 
 | Figura | Ochos |
 | --- | --- |
-| Enchufla doble | 2 |
+| Enchufla | 2 |
+| Enchufla arriba | 2 |
+| Enchufla doble | 3 |
 | 70 | 3 |
 | 70 por abajo | 3 |
 | 70 complicada | 3 |
 | 80 | 3 |
 | 90 | 3 |
+| Tijera simple | 3 |
 | Sombrero doble | 2 |
 | Sombrero complicado | 2 |
 | (todas las demas) | 1 |

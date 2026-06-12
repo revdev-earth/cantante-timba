@@ -25,7 +25,7 @@ export const FIGURE_NOTE_ES: Record<string, string> = {
   Contratiempo:
     "Paso básico en contratiempo (acentuando en el 2 y el 6 en vez del 1 y el 5). Es el estado desde donde arrancan Americano, Americana y Todos americanos. 1×8.",
   Sabrosura:
-    "Figura de sabor y goce desde Contratiempo. Se juega con el ritmo, movimientos de cadera y brazos libres. Puro estilo. 1×8.",
+    "Figura de sabor y goce desde Contratiempo o Básico. Se juega con el ritmo, movimientos de cadera y brazos libres. Sale con Dile que no. 1×8.",
   Americano:
     "Desde Contratiempo, es una enchufla para la persona líder: rota su cuerpo hacia la izquierda y pasa a la siguiente persona que sigue. Termina en Básico con nueva pareja. 1×8.",
   Americana:
@@ -33,7 +33,7 @@ export const FIGURE_NOTE_ES: Record<string, string> = {
   "Todos americanos":
     "Desde Contratiempo, las dos personas hacen una enchufla: el líder rota hacia la izquierda, la persona que sigue va hacia la derecha y vuelven a Básico. Antes de llegar a la mitad se puede meter Corazón o Salúdate. 1×8.",
   Corazón:
-    "Desde Todos americanos, la persona líder hace un gesto de corazón con las manos de la pareja mientras la saca. Figura romántica y de conexión. 1×8.",
+    "Desde Todos americanos, la persona líder hace un gesto de corazón con las manos de la pareja mientras la saca. Vuelve a Todos americanos. 1×8.",
   Arriba:
     "Desde Básico, las personas líderes se mueven en la dirección del círculo hacia arriba (cerrándolo) y las personas que siguen van hacia atrás, manteniendo el paso básico. Ajusta el tamaño de la rueda. 1×8.",
   Abajo:
@@ -72,8 +72,10 @@ export const FIGURE_NOTE_ES: Record<string, string> = {
     "Comienza con Dame dos: se pasa la primera persona, luego la persona líder sale del círculo mientras la persona que sigue va por adentro. Después la persona líder vuelve hacia la tercera persona y la persona que sigue regresa a la posición del círculo. Cierran con un Dile que no. 1×8.",
   Patineta:
     "Desde Patineta solo se puede seguir con Cambio, Se fue o Dame; ninguna otra figura sale de ahí. En Patineta el líder pasa al frente. 1×8.",
+  Manolín:
+    "Figura hermana de Patineta. Comparte la lógica de Cambio, Se fue y Dame. 1×8.",
   Cambio:
-    "En Patineta el líder pasa al frente. El Cambio invierte: hace que la persona que sigue (folly) pase al frente y el líder quede atrás.",
+    "En Patineta o Manolín, el Cambio invierte quién va al frente. En el mapa vuelve a la familia Patineta/Manolín para poder seguir.",
   "Se fue":
     "Depende de quién va al frente. Con el líder al frente (Patineta): es como una enchufla para el hombre, después una mira la bonita con las manos unidas, se termina en sombrero y luego Dile que no. Con la persona que sigue al frente (tras el Cambio): es una enchufla para ella, después un final en sombrero y Dile que no. Termina en Guapeala.",
   "Mira la bonita arriba":
@@ -100,7 +102,7 @@ export const FIGURE_NOTE_DE: Record<string, string> = {
   Contratiempo:
     "Grundschritt im Contratiempo (Betonung auf der 2 und der 6 statt 1 und 5). Der Zustand, aus dem Americano, Americana und Todos americanos starten. 1×8.",
   Sabrosura:
-    "Sabor- und Genuss-Figur aus dem Contratiempo. Man spielt mit dem Rhythmus, Hüftbewegungen und freien Armen. Reiner Stil. 1×8.",
+    "Sabor- und Genuss-Figur aus Contratiempo oder Básico. Man spielt mit Rhythmus, Hüfte und freien Armen. Der Ausstieg ist Dile que no. 1×8.",
   Americano:
     "Aus dem Contratiempo eine Enchufla für die Führende: sie dreht den Körper nach links und wechselt zur nächsten Folgenden. Endet im Básico mit neuem Partner. 1×8.",
   Americana:
@@ -108,7 +110,7 @@ export const FIGURE_NOTE_DE: Record<string, string> = {
   "Todos americanos":
     "Aus dem Contratiempo machen beide eine Enchufla: die Führende dreht nach links, die Folgende geht nach rechts und zurück zum Básico. Vor der Mitte kann man Corazón oder Salúdate einbauen. 1×8.",
   Corazón:
-    "Aus dem Todos americanos formt die Führende mit den Händen des Paares ein Herz, während sie es herausführt. Romantische Verbindungsfigur. 1×8.",
+    "Aus Todos americanos formt die Führende mit den Händen des Paares ein Herz. Kehrt zu Todos americanos zurück. 1×8.",
   Arriba:
     "Aus dem Básico bewegen sich die Führenden in Kreisrichtung nach oben (Kreis schließen) und die Folgenden nach hinten, im Grundschritt. Passt die Größe der Rueda an. 1×8.",
   Abajo:
@@ -147,8 +149,10 @@ export const FIGURE_NOTE_DE: Record<string, string> = {
     "Beginnt mit Dame dos: man geht an der ersten Person vorbei, dann verlässt die Führende den Kreis, während die Folgende innen geht. Danach kehrt die Führende zur dritten Person zurück und die Folgende zur Kreisposition. Schließt mit einem Dile que no. 1×8.",
   Patineta:
     "Aus Patineta kann man nur mit Cambio, Se fue oder Dame weitermachen; keine andere Figur geht von dort aus. In Patineta geht die Führende nach vorn. 1×8.",
+  Manolín:
+    "Schwesterfigur von Patineta. Teilt die Logik von Cambio, Se fue und Dame. 1×8.",
   Cambio:
-    "In Patineta geht die Führende nach vorn. Der Cambio kehrt es um: die Folgende (Folly) geht nach vorn und die Führende nach hinten.",
+    "In Patineta oder Manolín kehrt Cambio um, wer vorne ist. Im Graphen führt es zurück zur Patineta/Manolín-Familie, damit die Sequenz weitergehen kann.",
   "Se fue":
     "Hängt davon ab, wer vorn ist. Mit der Führenden vorn (Patineta): wie eine Enchufla für den Mann, dann eine Mira la bonita mit verbundenen Händen, Abschluss im Sombrero und dann ein Dile que no. Mit der Folgenden vorn (nach dem Cambio): eine Enchufla für sie, dann ein Sombrero-Abschluss und Dile que no. Endet in Guapeala.",
   "Mira la bonita arriba":
@@ -175,7 +179,7 @@ export const FIGURE_NOTE_EN: Record<string, string> = {
   Contratiempo:
     "Basic step on the offbeat (accenting on 2 and 6 instead of 1 and 5). The state from which Americano, Americana and Todos americanos start. 1×8.",
   Sabrosura:
-    "Sabor and enjoyment figure from Contratiempo. You play with the rhythm, hip movements and free arms. Pure style. 1×8.",
+    "Sabor and enjoyment figure from Contratiempo or Básico. You play with rhythm, hips and free arms. It exits with Dile que no. 1×8.",
   Americano:
     "From Contratiempo, an enchufla for the leader: rotates the body to the left and moves to the next follower. Ends in Básico with a new partner. 1×8.",
   Americana:
@@ -183,7 +187,7 @@ export const FIGURE_NOTE_EN: Record<string, string> = {
   "Todos americanos":
     "From Contratiempo, both do an enchufla: the leader rotates left, the follower goes right and they return to Básico. Before reaching the middle you can add Corazón or Salúdate. 1×8.",
   Corazón:
-    "From Todos americanos, the leader makes a heart shape with the couple's hands while leading the partner out. A romantic connection figure. 1×8.",
+    "From Todos americanos, the leader makes a heart shape with the couple's hands. Returns to Todos americanos. 1×8.",
   Arriba:
     "From Básico, the leaders move in the circle direction upward (closing it) and the followers go back, keeping the basic step. Adjusts the size of the rueda. 1×8.",
   Abajo:
@@ -222,8 +226,10 @@ export const FIGURE_NOTE_EN: Record<string, string> = {
     "Starts with Dame dos: you pass the first person, then the leader exits the circle while the follower goes inside. Then the leader returns toward the third person and the follower back to the circle position. Close with a Dile que no. 1×8.",
   Patineta:
     "From Patineta you can only continue with Cambio, Se fue or Dame; no other figure leaves from there. In Patineta the leader moves to the front. 1×8.",
+  Manolín:
+    "Sister figure to Patineta. It shares the Cambio, Se fue and Dame logic. 1×8.",
   Cambio:
-    "In Patineta the leader moves to the front. The Cambio reverses it: the follower (folly) moves to the front and the leader to the back.",
+    "In Patineta or Manolín, Cambio reverses who is in front. In the graph it returns to the Patineta/Manolín family so the sequence can continue.",
   "Se fue":
     "Depends on who's in front. With the leader in front (Patineta): like an enchufla for the man, then a Mira la bonita with joined hands, finishing in sombrero and then a Dile que no. With the follower in front (after the Cambio): an enchufla for her, then a sombrero ending and Dile que no. Ends in Guapeala.",
   "Mira la bonita arriba":

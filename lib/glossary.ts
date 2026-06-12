@@ -47,13 +47,13 @@ export const FIGURE_DOC: Record<string, FigureDoc> = {
   Americano: { startsAt: "Contratiempo", endsAt: "Básico" },
   Americana: { startsAt: "Contratiempo", endsAt: "Básico" },
   "Todos americanos": { startsAt: "Contratiempo", endsAt: "Básico" },
-  Corazón: { startsAt: "Todos americanos" },
+  Corazón: { startsAt: "Todos americanos", endsAt: "Todos americanos" },
 
   // ── Arriba / Abajo / Tarro ────────────────────────────
   Arriba: { startsAt: ["Básico", "Arriba", "Abajo"], endsAt: "Arriba" },
   Abajo: { startsAt: ["Básico", "Arriba", "Abajo"], endsAt: "Abajo" },
   Tarro: { startsAt: "Arriba", endsAt: "Arriba" },
-  "Pa dentro y pa fuera": { startsAt: "Básico", endsAt: "Pa dentro y pa fuera"  },
+  "Pa dentro y pa fuera": { startsAt: "Básico", endsAt: "Básico" },
 
   // ── Camina / Saluda ───────────────────────────────────
   "Camina la rueda": { startsAt: "Guapeala", endsAt: "Guapeala" },
@@ -148,7 +148,8 @@ export const FIGURE_DOC: Record<string, FigureDoc> = {
 
   // ── Patineta ──────────────────────────────────────────
   Patineta: { startsAt: "Guapeala", endsAt: "Guapeala" },
-  Cambio: { startsAt: "Guapeala" },
+  Manolín: { startsAt: "Guapeala", endsAt: "Guapeala" },
+  Cambio: { startsAt: ["Patineta", "Manolín"], endsAt: "Patineta" },
   "Se fue": { startsAt: "Guapeala", endsAt: "Guapeala", implies: "Dile que no" },
 
   // ── Tijera simple ─────────────────────────────────────

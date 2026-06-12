@@ -126,6 +126,8 @@ export default function Home() {
   const autoTempoRef = useRef(autoTempo);
   const nextBeatTimeRef = useRef(0);
   const lastPeakSeenRef = useRef(0);
+  const lastPhaseSeenRef = useRef(0);
+  const phaseErrorRef = useRef(0);
   const durationsRef = useRef(durations);
   const rafRef = useRef(0);
 
@@ -351,25 +353,60 @@ export default function Home() {
       const tempo = songBpmRef.current ?? bpmRef.current;
       const interval = 60 / tempo;
 
-      // nudge the grid towards strong onsets (gentle phase correction)
+      // ── corrección de fase principal: histograma plegado (1×/seg) ──
+      // El tracker pliega los últimos 8 s de onsets módulo el período: la
+      // fase donde se acumula la energía ES el beat. Robusto contra la
+      // síncopa (el tumbao y los adornos se promedian y desaparecen).
+      // IMPORTANTE: el error solo se ANOTA aquí; se aplica en el límite del
+      // beat (abajo) para que ningún conteo quede apretado ni estirado.
+      const phase = tracker?.phase;
+      if (
+        phase &&
+        phase.version !== lastPhaseSeenRef.current &&
+        phase.confidence >= 1.8 &&
+        Math.abs(phase.periodSec - interval) < interval * 0.06
+      ) {
+        lastPhaseSeenRef.current = phase.version;
+        const gridPhase =
+          ((nextBeatTimeRef.current % phase.periodSec) + phase.periodSec) %
+          phase.periodSec;
+        let error = phase.offsetSec - gridPhase;
+        // diferencia circular: tomar el camino corto
+        if (error > phase.periodSec / 2) error -= phase.periodSec;
+        if (error < -phase.periodSec / 2) error += phase.periodSec;
+        phaseErrorRef.current = error; // reemplaza (medida fresca y global)
+      }
+
+      // ── corrección fina por picos (entre actualizaciones de fase) ──
+      // Solo picos MUY cerca del beat (±25%); también va a la cola.
       if (tracker && tracker.lastPeakTime !== lastPeakSeenRef.current) {
         lastPeakSeenRef.current = tracker.lastPeakTime;
         const peak = tracker.lastPeakTime;
         const steps = Math.round((nextBeatTimeRef.current - peak) / interval);
         const gridTime = nextBeatTimeRef.current - steps * interval;
         const error = peak - gridTime;
-        if (Math.abs(error) < interval / 2) {
-          nextBeatTimeRef.current += error * 0.12;
+        if (Math.abs(error) < interval * 0.25) {
+          phaseErrorRef.current += error * 0.15;
         }
       }
 
       // catch up after a background tab without machine-gunning counts
       if (ctx.currentTime - nextBeatTimeRef.current > 2) {
         nextBeatTimeRef.current = ctx.currentTime;
+        phaseErrorRef.current = 0;
       }
 
       while (ctx.currentTime >= nextBeatTimeRef.current) {
-        nextBeatTimeRef.current += interval;
+        // aplicar la corrección pendiente SOLO aquí, con tope del 8% del
+        // intervalo por beat: el espaciado entre números queda siempre
+        // parejo y la rejilla converge en unos pocos beats sin saltos.
+        const maxStep = interval * 0.08;
+        const applied = Math.max(
+          -maxStep,
+          Math.min(maxStep, phaseErrorRef.current),
+        );
+        phaseErrorRef.current -= applied;
+        nextBeatTimeRef.current += interval + applied;
         handleBeat((beatRef.current % 8) + 1);
       }
 
@@ -421,6 +458,7 @@ export default function Home() {
   const stopAndReset = () => {
     setPlaying(false);
     pausedRef.current = false;
+    phaseErrorRef.current = 0;
     audioElRef.current?.pause();
     if (audioElRef.current) audioElRef.current.currentTime = 0;
     void audioCtxRef.current?.resume();
@@ -441,6 +479,7 @@ export default function Home() {
     if (!ctx) return;
     beatRef.current = 0;
     barRef.current = 0;
+    phaseErrorRef.current = 0; // el toque humano manda: descartar correcciones
     nextBeatTimeRef.current = ctx.currentTime;
   };
 

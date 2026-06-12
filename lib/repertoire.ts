@@ -30,6 +30,7 @@ export const FIGURES = [
   "Dame dos",
   "Dame dos y una afuera",
   "Patineta",
+  "Manolín",
   "Ni pa ti ni pa mi",
   "Fly",
   "Fly doble",
@@ -127,6 +128,7 @@ const FIGURE_DURATION: Record<string, number> = {
   "70 complicada": 3,
   "80": 3,
   "90": 3,
+  "Tijera simple": 3,
   "Sombrero doble": 2,
   "Sombrero complicado": 2,
 };
