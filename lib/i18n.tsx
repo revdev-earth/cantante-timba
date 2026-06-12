@@ -183,6 +183,7 @@ const UI = {
   },
   "combos.clear": { es: "limpiar", de: "leeren", en: "clear" },
   "combos.save": { es: "guardar combo", de: "Combo speichern", en: "save combo" },
+  "combos.saved": { es: "guardados", de: "gespeichert", en: "saved" },
   "combos.update": {
     es: "actualizar",
     de: "aktualisieren",

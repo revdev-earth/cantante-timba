@@ -28,6 +28,7 @@ export default function CombosPage() {
   const [graph, setGraph] = useState<ConnectionGraph | null>(null);
   const [durations, setDurations] = useState<Record<string, number>>({});
   const [userCombos, setUserCombos] = useState<Combo[]>([]);
+  const [navOpen, setNavOpen] = useState(false);
 
   /* builder */
   const [start, setStart] = useState<Hub>("Básico");
@@ -37,17 +38,35 @@ export default function CombosPage() {
   const [freeMode, setFreeMode] = useState(false);
 
   useEffect(() => {
-    setGraph(loadGraph());
-    setUserCombos(loadUserCombos());
-    const base = Object.fromEntries(FIGURES.map((f) => [f, figureDuration(f)]));
-    try {
-      const raw = localStorage.getItem(DURATIONS_KEY);
-      if (raw) Object.assign(base, JSON.parse(raw));
-    } catch {
-      /* keep defaults */
-    }
-    setDurations(base);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const base = Object.fromEntries(
+        FIGURES.map((f) => [f, figureDuration(f)]),
+      );
+      try {
+        const raw = localStorage.getItem(DURATIONS_KEY);
+        if (raw) Object.assign(base, JSON.parse(raw));
+      } catch {
+        /* keep defaults */
+      }
+      setGraph(loadGraph());
+      setUserCombos(loadUserCombos());
+      setDurations(base);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [navOpen]);
 
   const persist = (next: Combo[]) => {
     setUserCombos(next);
@@ -120,11 +139,118 @@ export default function CombosPage() {
         aria-hidden
         className="pointer-events-none absolute -right-1/4 -bottom-1/3 size-[60vmax] rounded-full bg-mar/8 blur-[130px]"
       />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+        }}
+      />
 
-      <div className="relative z-10 mx-auto max-w-3xl px-4 py-6">
-        <header className="mb-6 flex items-center justify-between gap-3">
+      <header className="relative z-10 flex flex-col gap-2 px-3 pt-2 pb-2 sm:px-4 sm:pt-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            aria-label={t("nav.menu")}
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen(true)}
+            className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 text-hueso/70 backdrop-blur transition-colors hover:text-hueso sm:hidden"
+          >
+            <span aria-hidden className="flex flex-col gap-1">
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+              <span className="block h-0.5 w-4 rounded-full bg-current" />
+            </span>
+          </button>
+
+          <Link
+            href="/"
+            className="font-display mr-auto text-lg tracking-wide uppercase sm:text-2xl"
+          >
+            <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
+              Timba Cantante
+            </span>
+          </Link>
+
+          <div className="shrink-0 sm:order-last">
+            <LanguageSwitcher />
+          </div>
+
+          <Link
+            href="/"
+            className="hidden rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso sm:block"
+          >
+            {t("nav.caller")}
+          </Link>
+          <Link
+            href="/mapa"
+            className="hidden rounded-full border border-white/15 px-3 py-1.5 text-sm text-hueso/50 transition-colors hover:text-hueso sm:block"
+          >
+            {t("nav.map")}
+          </Link>
+        </div>
+      </header>
+
+      {navOpen && (
+        <button
+          type="button"
+          aria-label={t("doc.close")}
+          className="fixed inset-0 z-30 bg-black/55 backdrop-blur-[2px] sm:hidden"
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+      <aside
+        aria-label={t("nav.menu")}
+        className={[
+          "fixed inset-y-0 left-0 z-40 flex w-72 max-w-[82vw] flex-col border-r border-white/10 bg-night-deep/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl transition-transform duration-200 sm:hidden",
+          navOpen ? "translate-x-0" : "-translate-x-full",
+        ].join(" ")}
+      >
+        <div className="mb-6 flex items-center gap-3">
+          <h2 className="font-display mr-auto text-xl tracking-wide uppercase">
+            <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
+              Timba
+            </span>
+          </h2>
+          <button
+            type="button"
+            aria-label={t("doc.close")}
+            onClick={() => setNavOpen(false)}
+            className="grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 text-xl leading-none text-hueso/70 transition-colors hover:text-hueso"
+          >
+            ×
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-2">
+          <Link
+            href="/"
+            onClick={() => setNavOpen(false)}
+            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-hueso/70 transition-colors hover:border-white/20 hover:text-hueso"
+          >
+            {t("nav.caller")}
+          </Link>
+          <Link
+            href="/combos"
+            onClick={() => setNavOpen(false)}
+            className="rounded-2xl border border-mango/35 bg-mango/10 px-4 py-3 text-sm font-semibold text-mango"
+          >
+            {t("nav.combos")}
+          </Link>
+          <Link
+            href="/mapa"
+            onClick={() => setNavOpen(false)}
+            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-hueso/70 transition-colors hover:border-white/20 hover:text-hueso"
+          >
+            {t("nav.map")}
+          </Link>
+        </nav>
+      </aside>
+
+      <div className="relative z-10 mx-auto max-w-5xl px-3 pb-8 sm:px-4 sm:pt-4">
+        <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="font-display text-3xl tracking-wide uppercase md:text-4xl">
+            <h1 className="font-display text-3xl tracking-wide uppercase sm:text-4xl">
               <span className="bg-linear-to-r from-mango via-flame to-rosa bg-clip-text text-transparent">
                 {t("combos.title")}
               </span>
@@ -133,23 +259,29 @@ export default function CombosPage() {
               {t("combos.subtitle")}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <Link
-              href="/"
-              className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-sm text-hueso/70 backdrop-blur transition-colors hover:text-hueso"
-            >
-              {t("nav.back")}
-            </Link>
+          <div className="flex flex-wrap gap-2 text-xs tracking-[0.18em] text-hueso/45 uppercase">
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+              {allCombos.length} {t("rep.combos")}
+            </span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+              {userCombos.length} {t("combos.saved")}
+            </span>
           </div>
         </header>
 
         {/* ---- builder ---- */}
-        <section className="mb-8 rounded-3xl border border-white/10 bg-white/5 p-5 backdrop-blur-md">
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
-              {t("combos.startIn")}
-            </span>
+        <section className="mb-8 rounded-3xl border border-white/10 bg-night-deep/45 p-4 shadow-2xl shadow-black/20 backdrop-blur-md sm:p-5">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
+            <div>
+              <p className="text-xs tracking-[0.22em] text-hueso/45 uppercase">
+                {t("combos.startIn")}
+              </p>
+              <p className="mt-1 text-sm text-hueso/55">
+                {freeMode
+                  ? t("combos.allFigures")
+                  : `${t("combos.from")} ${standing}`}
+              </p>
+            </div>
             <div className="flex overflow-hidden rounded-full border border-white/15">
               {HUBS.map((hub) => (
                 <button
@@ -172,7 +304,8 @@ export default function CombosPage() {
           </div>
 
           {/* sequence */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="mb-4 min-h-11 rounded-2xl border border-white/10 bg-black/10 p-3">
+            <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-mango/50 bg-mango/10 px-3 py-1 text-sm text-mango">
               ▶ {start}
             </span>
@@ -194,6 +327,7 @@ export default function CombosPage() {
                 ⌫
               </button>
             )}
+            </div>
           </div>
 
           {figs.length > 0 && (
@@ -211,7 +345,7 @@ export default function CombosPage() {
           )}
 
           {/* suggestions */}
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
               {freeMode
                 ? t("combos.allFigures")
@@ -230,7 +364,7 @@ export default function CombosPage() {
             </button>
           </div>
 
-          <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto">
+          <div className="flex max-h-52 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.03] p-3">
             {suggestions.length === 0 ? (
               <p className="text-sm text-hueso/40">{t("combos.noExits")}</p>
             ) : (
@@ -260,7 +394,7 @@ export default function CombosPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("combos.namePlaceholder")}
-              className="min-w-48 flex-1 rounded-full border border-white/15 bg-transparent px-4 py-1.5 text-sm text-hueso outline-none placeholder:text-hueso/30 focus:border-mango/60"
+              className="min-w-48 flex-1 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-hueso outline-none placeholder:text-hueso/30 focus:border-mango/60"
             />
             <button
               onClick={clearBuilder}
