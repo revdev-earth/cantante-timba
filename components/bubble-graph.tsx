@@ -127,6 +127,12 @@ export default function BubbleGraph({
   const boundsRef = useRef(canvasBounds(graph.positions));
   const selectedRef = useRef<string | null>(null);
   const scaleRef = useRef(scale);
+  const pinchRef = useRef<{
+    dist: number;
+    scale: number;
+    cx: number;
+    cy: number;
+  } | null>(null);
 
   useLayoutEffect(() => {
     graphRef.current = graph;
@@ -275,6 +281,70 @@ export default function BubbleGraph({
 
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
+  // pinch-zoom en touch: dos dedos hacen zoom SOLO del mapa (preventDefault
+  // evita el zoom de página); un dedo conserva el scroll/gestos nativos
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const touchDist = (touches: TouchList) =>
+      Math.hypot(
+        touches[0].clientX - touches[1].clientX,
+        touches[0].clientY - touches[1].clientY,
+      );
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      // cancelar selección/arrastre en curso: el gesto pasó a ser zoom
+      interactionRef.current = null;
+      setDragging(null);
+      const rect = el.getBoundingClientRect();
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const s = scaleRef.current;
+      pinchRef.current = {
+        dist: touchDist(e.touches),
+        scale: s,
+        cx: (midX - rect.left + el.scrollLeft) / s,
+        cy: (midY - rect.top + el.scrollTop) / s,
+      };
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      const pinch = pinchRef.current;
+      if (!pinch || e.touches.length < 2) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const next = clampScale(
+        (pinch.scale * touchDist(e.touches)) / pinch.dist,
+      );
+      scaleRef.current = next;
+      setScale(next);
+      requestAnimationFrame(() => {
+        el.scrollLeft = pinch.cx * next - (midX - rect.left);
+        el.scrollTop = pinch.cy * next - (midY - rect.top);
+      });
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchRef.current = null;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
   }, []);
 
   // on mount: zoom so the whole graph fits, then center it
@@ -578,7 +648,10 @@ export default function BubbleGraph({
                     event.stopPropagation();
                     setConfirmEdge(i);
                   }}
-                  onPointerEnter={() => setHoverEdge(i)}
+                  onPointerEnter={(event) => {
+                    // solo hover real (mouse); en touch se queda pegado
+                    if (event.pointerType === "mouse") setHoverEdge(i);
+                  }}
                   onPointerLeave={() => setHoverEdge(null)}
                 />
                 {confirming && (
@@ -650,7 +723,9 @@ export default function BubbleGraph({
               key={figure}
               data-figure={figure}
               onPointerDown={startMove(figure)}
-              onPointerEnter={() => setHoverFigure(figure)}
+              onPointerEnter={(event) => {
+                if (event.pointerType === "mouse") setHoverFigure(figure);
+              }}
               onPointerLeave={() => setHoverFigure((current) => current === figure ? null : current)}
               style={{
                 left: pos.x + bounds.offsetX,

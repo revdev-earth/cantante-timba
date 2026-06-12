@@ -163,6 +163,7 @@ export default function Home() {
   const beatRef = useRef(0);
   const barRef = useRef(0);
   const nextCallBarRef = useRef(1);
+  const figureEndBarRef = useRef(0);
   const bpmRef = useRef(bpm);
   const songBpmRef = useRef<number | null>(null);
   const everyRef = useRef(callEveryBars);
@@ -384,6 +385,9 @@ export default function Home() {
     // hold this figure for its own length (in ochos) before the next call
     const figureOchos =
       durationsRef.current[item.figure] ?? figureDuration(item.figure);
+    // la figura en sí dura sus ochos; el multiplicador agrega tiempo de
+    // descanso bailando el hub (Básico/Guapeala) hasta la próxima llamada
+    figureEndBarRef.current = barRef.current + figureOchos;
     nextCallBarRef.current =
       barRef.current + figureOchos * Math.max(1, everyRef.current);
   }, []);
@@ -395,6 +399,11 @@ export default function Home() {
       playTick();
       if (count === 1) {
         barRef.current += 1;
+        // la figura ya terminó pero aún no toca la próxima llamada:
+        // se baila el hub (Básico/Guapeala) y la pantalla lo muestra
+        if (!pendingRef.current && barRef.current >= figureEndBarRef.current) {
+          setCurrentCall(null);
+        }
         if (!pendingRef.current && barRef.current >= nextCallBarRef.current) {
           prepareNextCall();
         }
@@ -514,6 +523,7 @@ export default function Home() {
     beatRef.current = 0;
     barRef.current = 0;
     nextCallBarRef.current = 1;
+    figureEndBarRef.current = 0;
     pendingRef.current = null;
     queueRef.current = [];
     setUpcomingCall(null);
@@ -934,7 +944,7 @@ export default function Home() {
                     {displayFigureName(currentCall)}
                   </span>
                 ) : (
-                  <span className="text-hueso/15">{idleLabel}</span>
+                  <span className="text-mar/35">{idleLabel}</span>
                 )}
               </h2>
 
@@ -1240,7 +1250,7 @@ export default function Home() {
             className="hidden overflow-hidden rounded-full border border-white/15 sm:flex"
             title={t("transport.timesX")}
           >
-            {[1, 2, 4].map((n) => (
+            {[1, 2, 3, 4].map((n) => (
               <button
                 key={n}
                 onClick={() => setCallEveryBars(n)}
@@ -1384,7 +1394,7 @@ export default function Home() {
               {t("transport.timesX")}
             </span>
             <div className="grid grid-cols-3 overflow-hidden rounded-full border border-white/15">
-              {[1, 2, 4].map((n) => (
+              {[1, 2, 3, 4].map((n) => (
                 <button
                   key={n}
                   onClick={() => setCallEveryBars(n)}
