@@ -27,8 +27,30 @@ import Link from "next/link";
 const BEATS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 const QUEUE_LOOKAHEAD = 10;
 const DURATIONS_STORAGE_KEY = "timba-durations";
+const PRESET_SONGS = [
+  { name: "Mi Timbaton", file: "Mi Timbaton.mp3" },
+  { name: "Caramelo Con Picante", file: "Caramelo Con Picante.mp3" },
+  { name: "Toda Una Vida", file: "Toda Una Vida.mp3" },
+  { name: "Bajanda Changui", file: "Bajanda Changüí.mp3" },
+  { name: "Lloraras", file: "lloraras.mp3" },
+] as const;
 
 type Mode = "song" | "metronome";
+type PresetSong = (typeof PRESET_SONGS)[number];
+
+const presetSongUrl = (song: PresetSong) =>
+  `/songs/${encodeURIComponent(song.file)}`;
+
+function nextPresetIndex(current: number, shuffle: boolean) {
+  if (shuffle && PRESET_SONGS.length > 1) {
+    let next = current;
+    while (next === current) {
+      next = Math.floor(Math.random() * PRESET_SONGS.length);
+    }
+    return next;
+  }
+  return (current + 1) % PRESET_SONGS.length;
+}
 
 function formatClock(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -106,6 +128,12 @@ export default function Home() {
   const [songLevel, setSongLevel] = useState(0);
   const [songTime, setSongTime] = useState(0);
   const [songDuration, setSongDuration] = useState(0);
+  const [songVersion, setSongVersion] = useState(0);
+  const [selectedPresetIndex, setSelectedPresetIndex] = useState<number | null>(
+    null,
+  );
+  const [shuffleSongs, setShuffleSongs] = useState(false);
+  const [songPickerOpen, setSongPickerOpen] = useState(false);
   const mode: Mode = songName ? "song" : "metronome";
 
   /* engine refs */
@@ -134,7 +162,10 @@ export default function Home() {
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const mediaSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const trackerRef = useRef<LiveBeatTracker | null>(null);
+  const songPickerRef = useRef<HTMLDivElement | null>(null);
   const autoTempoRef = useRef(autoTempo);
+  const selectedPresetIndexRef = useRef<number | null>(null);
+  const shuffleSongsRef = useRef(shuffleSongs);
   const nextBeatTimeRef = useRef(0);
   const lastPeakSeenRef = useRef(0);
   const lastPhaseSeenRef = useRef(0);
@@ -153,6 +184,8 @@ export default function Home() {
     enabledCombosRef.current = enabledCombos;
     practiceModeRef.current = practiceMode;
     autoTempoRef.current = autoTempo;
+    selectedPresetIndexRef.current = selectedPresetIndex;
+    shuffleSongsRef.current = shuffleSongs;
     graphRef.current = graph;
     durationsRef.current = durations;
   });
@@ -165,6 +198,24 @@ export default function Home() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [navOpen]);
+
+  useEffect(() => {
+    if (!songPickerOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && songPickerRef.current?.contains(target)) return;
+      setSongPickerOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSongPickerOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [songPickerOpen]);
 
   /* ---- per-figure durations persistence ---- */
   useEffect(() => {
@@ -215,7 +266,7 @@ export default function Home() {
       audio.removeEventListener("loadedmetadata", updateDuration);
       audio.removeEventListener("durationchange", updateDuration);
     };
-  }, [songName]);
+  }, [songName, songVersion]);
 
   /* ---- connection graph persistence ---- */
   useEffect(() => {
@@ -543,25 +594,35 @@ export default function Home() {
     if (ctx) nextBeatTimeRef.current = ctx.currentTime + 0.1;
   };
 
-  const handleSongUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-    if (playing) togglePlay();
+  const releaseCurrentSong = () => {
     if (audioElRef.current) {
       audioElRef.current.pause();
-      URL.revokeObjectURL(audioElRef.current.src);
+      if (audioElRef.current.src.startsWith("blob:")) {
+        URL.revokeObjectURL(audioElRef.current.src);
+      }
+      audioElRef.current = null;
     }
     if (mediaSourceRef.current) {
       mediaSourceRef.current.disconnect();
       mediaSourceRef.current = null;
     }
     trackerRef.current = null;
+  };
 
-    const audio = new Audio(URL.createObjectURL(file));
-    audio.loop = true;
+  async function loadSong(
+    name: string,
+    src: string,
+    arrayBuffer: () => Promise<ArrayBuffer>,
+    options: { autoplay?: boolean; presetIndex?: number | null } = {},
+  ) {
+    if (playing) {
+      setPlaying(false);
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    }
+    releaseCurrentSong();
+
+    const audio = new Audio(src);
+    audio.loop = false;
     audioElRef.current = audio;
 
     if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
@@ -574,15 +635,46 @@ export default function Home() {
     mediaSourceRef.current = source;
     trackerRef.current = new LiveBeatTracker(ctx, source);
 
-    setSongName(file.name.replace(/\.[^.]+$/, ""));
+    setSongName(name);
+    setSelectedPresetIndex(options.presetIndex ?? null);
+    selectedPresetIndexRef.current = options.presetIndex ?? null;
     setSongBpm(null);
     setSongTime(0);
     setSongDuration(0);
+    setSongLevel(0);
+    setSongVersion((version) => version + 1);
+    phaseErrorRef.current = 0;
+    lastPeakSeenRef.current = 0;
+    lastPhaseSeenRef.current = 0;
+    beatRef.current = 0;
+    setBeat(0);
+    nextBeatTimeRef.current = ctx.currentTime + 0.1;
+
+    audio.addEventListener("ended", () => {
+      const current = selectedPresetIndexRef.current;
+      if (current === null) {
+        setPlaying(false);
+        return;
+      }
+      void loadPresetSongByIndex(
+        nextPresetIndex(current, shuffleSongsRef.current),
+        true,
+      );
+    });
+
+    if (options.autoplay) {
+      pausedRef.current = false;
+      void ctx.resume();
+      void audio.play().then(
+        () => setPlaying(true),
+        () => setPlaying(false),
+      );
+    }
 
     // offline estimate as a seed — playback can start right away meanwhile
     setAnalyzing(true);
     try {
-      const decoded = await ctx.decodeAudioData(await file.arrayBuffer());
+      const decoded = await ctx.decodeAudioData(await arrayBuffer());
       const seed = detectBpm(decoded);
       trackerRef.current?.seed(seed);
       setSongBpm((current) => current ?? seed);
@@ -591,21 +683,35 @@ export default function Home() {
     } finally {
       setAnalyzing(false);
     }
+  }
+
+  function loadPresetSongByIndex(index: number, autoplay = false) {
+    const song = PRESET_SONGS[index];
+    if (!song) return;
+    const src = presetSongUrl(song);
+    void loadSong(song.name, src, async () => {
+      const response = await fetch(src);
+      return response.arrayBuffer();
+    }, { autoplay, presetIndex: index });
+  }
+
+  const handleSongUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const src = URL.createObjectURL(file);
+    await loadSong(file.name.replace(/\.[^.]+$/, ""), src, () =>
+      file.arrayBuffer(),
+    );
   };
 
   const clearSong = () => {
     if (playing) togglePlay();
-    if (mediaSourceRef.current) {
-      mediaSourceRef.current.disconnect();
-      mediaSourceRef.current = null;
-    }
-    trackerRef.current = null;
-    if (audioElRef.current) {
-      audioElRef.current.pause();
-      URL.revokeObjectURL(audioElRef.current.src);
-      audioElRef.current = null;
-    }
+    releaseCurrentSong();
     setSongName(null);
+    setSelectedPresetIndex(null);
     setSongBpm(null);
     setSongTime(0);
     setSongDuration(0);
@@ -914,6 +1020,94 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
+              {t("transport.availableSongs")}
+            </span>
+            <div
+              ref={songPickerRef}
+              className="relative flex items-center gap-2 rounded-full border border-white/15 bg-white/5 p-1 backdrop-blur"
+            >
+              <button
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={songPickerOpen}
+                onClick={() => setSongPickerOpen((open) => !open)}
+                className="flex min-w-48 max-w-[58vw] items-center justify-between gap-3 rounded-full bg-night-deep/70 px-4 py-2 text-left text-sm text-hueso shadow-inner shadow-black/20 transition-colors hover:bg-white/10"
+              >
+                <span className="min-w-0 truncate">
+                  {selectedPresetIndex === null
+                    ? t("transport.availableSongs")
+                    : PRESET_SONGS[selectedPresetIndex]?.name}
+                </span>
+                <span
+                  aria-hidden
+                  className={[
+                    "h-0 w-0 shrink-0 border-x-[5px] border-t-[7px] border-x-transparent border-t-mango transition-transform",
+                    songPickerOpen ? "rotate-180" : "",
+                  ].join(" ")}
+                />
+              </button>
+
+              {songPickerOpen && (
+                <div
+                  role="listbox"
+                  className="absolute right-0 bottom-full z-50 mb-2 w-72 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-white/15 bg-night-deep/95 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+                >
+                  <div className="mb-1 px-3 py-1 text-[10px] tracking-[0.22em] text-hueso/35 uppercase">
+                    {t("transport.availableSongs")}
+                  </div>
+                  {PRESET_SONGS.map((song, index) => {
+                    const active = selectedPresetIndex === index;
+                    return (
+                      <button
+                        key={song.file}
+                        type="button"
+                        role="option"
+                        aria-selected={active}
+                        onClick={() => {
+                          setSongPickerOpen(false);
+                          loadPresetSongByIndex(index, true);
+                        }}
+                        className={[
+                          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
+                          active
+                            ? "bg-linear-to-r from-mango/25 to-rosa/15 text-hueso"
+                            : "text-hueso/65 hover:bg-white/7 hover:text-hueso",
+                        ].join(" ")}
+                      >
+                        <span
+                          aria-hidden
+                          className={[
+                            "size-2.5 rounded-full border",
+                            active
+                              ? "border-mango bg-mango shadow-[0_0_14px] shadow-mango/50"
+                              : "border-white/20 bg-white/5",
+                          ].join(" ")}
+                        />
+                        <span className="min-w-0 flex-1 truncate">
+                          {song.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                onClick={() => setShuffleSongs((value) => !value)}
+                className={[
+                  "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  shuffleSongs
+                    ? "border-mango/60 bg-mango/15 text-mango"
+                    : "border-white/15 text-hueso/45 hover:text-hueso",
+                ].join(" ")}
+              >
+                {t("transport.random")}
+              </button>
+            </div>
+          </div>
 
           {songName ? (
             <>

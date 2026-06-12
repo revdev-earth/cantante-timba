@@ -56,6 +56,16 @@ const UI = {
     de: "♫ Lied laden",
     en: "♫ upload song",
   },
+  "transport.availableSongs": {
+    es: "canciones",
+    de: "Lieder",
+    en: "songs",
+  },
+  "transport.random": {
+    es: "aleatorio",
+    de: "zufällig",
+    en: "random",
+  },
   "transport.intensity": {
     es: "intensidad",
     de: "Intensität",
