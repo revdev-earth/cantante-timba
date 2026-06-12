@@ -89,9 +89,8 @@ export default function Home() {
   const [beat, setBeat] = useState(0); // 0 = stopped
   const [bpm, setBpm] = useState(188);
   const [callEveryBars, setCallEveryBars] = useState(1);
-  const [voiceOn, setVoiceOn] = useState(false);
-  const [soundOn, setSoundOn] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [transportSheetOpen, setTransportSheetOpen] = useState(false);
 
   /* calls */
   const [currentCall, setCurrentCall] = useState<string | null>(null);
@@ -145,8 +144,6 @@ export default function Home() {
   const bpmRef = useRef(bpm);
   const songBpmRef = useRef<number | null>(null);
   const everyRef = useRef(callEveryBars);
-  const voiceRef = useRef(voiceOn);
-  const soundRef = useRef(soundOn);
   const enabledFiguresRef = useRef(enabledFigures);
   const enabledCombosRef = useRef(enabledCombos);
   const practiceModeRef = useRef(practiceMode);
@@ -178,8 +175,6 @@ export default function Home() {
     bpmRef.current = bpm;
     songBpmRef.current = songBpm;
     everyRef.current = callEveryBars;
-    voiceRef.current = voiceOn;
-    soundRef.current = soundOn;
     enabledFiguresRef.current = enabledFigures;
     enabledCombosRef.current = enabledCombos;
     practiceModeRef.current = practiceMode;
@@ -216,6 +211,15 @@ export default function Home() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [songPickerOpen]);
+
+  useEffect(() => {
+    if (!transportSheetOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTransportSheetOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [transportSheetOpen]);
 
   /* ---- per-figure durations persistence ---- */
   useEffect(() => {
@@ -329,36 +333,8 @@ export default function Home() {
 
   /* ---- audio ---- */
 
-  /* soft woodblock tick — silent on the 4 and 8 pauses */
-  const playTick = useCallback((count: number) => {
-    if (!soundRef.current) return;
-    const ctx = audioCtxRef.current;
-    if (!ctx || count === 4 || count === 8) return;
-    const accent = count === 1;
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    osc.type = "square";
-    osc.frequency.value = accent ? 820 : 620;
-    filter.type = "bandpass";
-    filter.frequency.value = accent ? 1600 : 1200;
-    filter.Q.value = 9;
-    gain.gain.setValueAtTime(accent ? 0.5 : 0.26, t);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
-    osc.connect(filter).connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.06);
-  }, []);
-
-  const speak = useCallback((text: string) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "es-ES";
-    utterance.rate = 1.15;
-    utterance.pitch = 1.05;
-    window.speechSynthesis.speak(utterance);
+  const playTick = useCallback(() => {
+    // Clave/tick audio is intentionally disabled.
   }, []);
 
   /* ---- call engine ---- */
@@ -382,19 +358,18 @@ export default function Home() {
     setUpcomingCall(null);
     setHistory((h) => [...h.slice(-11), item.figure]);
     setCurrentStandingAt(figureEndsAt(item.figure) ?? item.figure);
-    if (voiceRef.current) speak(item.figure);
     // hold this figure for its own length (in ochos) before the next call
     const figureOchos =
       durationsRef.current[item.figure] ?? figureDuration(item.figure);
     nextCallBarRef.current =
       barRef.current + figureOchos * Math.max(1, everyRef.current);
-  }, [speak]);
+  }, []);
 
   const handleBeat = useCallback(
     (count: number) => {
       beatRef.current = count;
       setBeat(count);
-      playTick(count);
+      playTick();
       if (count === 1) {
         barRef.current += 1;
         if (!pendingRef.current && barRef.current >= nextCallBarRef.current) {
@@ -1007,6 +982,13 @@ export default function Home() {
             ↺
           </button>
 
+          <button
+            onClick={() => setTransportSheetOpen(true)}
+            className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-hueso/70 transition-colors hover:text-hueso sm:hidden"
+          >
+            {t("transport.options")}
+          </button>
+
           {mode === "song" && songName && (
             <div className="flex flex-col items-center gap-1">
               <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
@@ -1021,7 +1003,7 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex flex-col items-center gap-1">
+          <div className="hidden flex-col items-center gap-1 sm:flex">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
               {t("transport.availableSongs")}
             </span>
@@ -1206,7 +1188,7 @@ export default function Home() {
                   className="w-40 accent-mango"
                 />
               </label>
-              <label className="cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20">
+              <label className="hidden cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20 sm:block">
                 {t("transport.upload")}
                 <input
                   key="upload-file"
@@ -1219,7 +1201,7 @@ export default function Home() {
             </>
           )}
 
-          <div className="flex flex-col items-center gap-1">
+          <div className="hidden flex-col items-center gap-1 sm:flex">
             <span className="text-xs tracking-[0.2em] text-hueso/50 uppercase">
               {t("transport.timesX")}
             </span>
@@ -1241,31 +1223,6 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => setVoiceOn((v) => !v)}
-              className={[
-                "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-                voiceOn
-                  ? "border-mango/60 bg-mango/15 text-mango"
-                  : "border-white/15 text-hueso/40",
-              ].join(" ")}
-            >
-              {t("transport.voice")}
-            </button>
-            <button
-              onClick={() => setSoundOn((s) => !s)}
-              className={[
-                "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
-                soundOn
-                  ? "border-mar/60 bg-mar/15 text-mar"
-                  : "border-white/15 text-hueso/40",
-              ].join(" ")}
-            >
-              {t("transport.clave")}
-            </button>
-          </div>
-
           <button
             onClick={() => setPanelOpen((p) => !p)}
             className="text-xs tracking-[0.2em] text-hueso/40 uppercase transition-colors hover:text-hueso/70"
@@ -1274,6 +1231,141 @@ export default function Home() {
             {t("transport.figures")}
           </button>
         </section>
+
+        {transportSheetOpen && (
+          <button
+            type="button"
+            aria-label={t("doc.close")}
+            className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[2px] sm:hidden"
+            onClick={() => setTransportSheetOpen(false)}
+          />
+        )}
+        <div
+          className={[
+            "fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t border-white/15 bg-night-deep/95 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-18px_60px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-transform duration-200 sm:hidden",
+            transportSheetOpen ? "translate-y-0" : "translate-y-full",
+          ].join(" ")}
+        >
+          <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-white/20" />
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs tracking-[0.22em] text-hueso/40 uppercase">
+                {t("transport.options")}
+              </p>
+              <p className="mt-1 max-w-56 truncate text-sm text-hueso/70">
+                {songName ?? t("transport.availableSongs")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTransportSheetOpen(false)}
+              className="grid size-9 place-items-center rounded-full border border-white/15 text-hueso/50 transition-colors hover:text-hueso"
+              aria-label={t("doc.close")}
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="mb-5">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <span className="text-xs tracking-[0.2em] text-hueso/45 uppercase">
+                {t("transport.availableSongs")}
+              </span>
+              <button
+                onClick={() => setShuffleSongs((value) => !value)}
+                className={[
+                  "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  shuffleSongs
+                    ? "border-mango/60 bg-mango/15 text-mango"
+                    : "border-white/15 text-hueso/45",
+                ].join(" ")}
+              >
+                {t("transport.random")}
+              </button>
+            </div>
+            <div className="grid gap-2">
+              {PRESET_SONGS.map((song, index) => {
+                const active = selectedPresetIndex === index;
+                return (
+                  <button
+                    key={song.file}
+                    type="button"
+                    onClick={() => {
+                      setTransportSheetOpen(false);
+                      loadPresetSongByIndex(index, true);
+                    }}
+                    className={[
+                      "flex items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm transition-colors",
+                      active
+                        ? "border-mango/45 bg-linear-to-r from-mango/20 to-rosa/10 text-hueso"
+                        : "border-white/10 bg-white/5 text-hueso/65",
+                    ].join(" ")}
+                  >
+                    <span
+                      aria-hidden
+                      className={[
+                        "size-2.5 rounded-full border",
+                        active
+                          ? "border-mango bg-mango shadow-[0_0_14px] shadow-mango/45"
+                          : "border-white/20 bg-white/5",
+                      ].join(" ")}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{song.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <label className="cursor-pointer rounded-full border border-mar/50 bg-mar/10 px-4 py-2 text-sm text-mar transition-colors hover:bg-mar/20">
+              {t("transport.upload")}
+              <input
+                key="upload-file-mobile"
+                type="file"
+                accept="audio/*"
+                onChange={(event) => {
+                  setTransportSheetOpen(false);
+                  void handleSongUpload(event);
+                }}
+                className="hidden"
+              />
+            </label>
+            {songName && (
+              <button
+                onClick={() => {
+                  setTransportSheetOpen(false);
+                  clearSong();
+                }}
+                className="rounded-full border border-white/15 px-4 py-2 text-sm text-hueso/50 transition-colors hover:text-rosa"
+              >
+                {t("transport.removeSong")}
+              </button>
+            )}
+          </div>
+
+          <div>
+            <span className="mb-2 block text-xs tracking-[0.2em] text-hueso/45 uppercase">
+              {t("transport.timesX")}
+            </span>
+            <div className="grid grid-cols-3 overflow-hidden rounded-full border border-white/15">
+              {[1, 2, 4].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCallEveryBars(n)}
+                  className={[
+                    "px-4 py-2 text-sm transition-colors",
+                    callEveryBars === n
+                      ? "bg-mar font-semibold text-night"
+                      : "text-hueso/60",
+                  ].join(" ")}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* ---- repertoire (collapsible) ---- */}
         {panelOpen && (

@@ -61,6 +61,11 @@ const UI = {
     de: "Lieder",
     en: "songs",
   },
+  "transport.options": {
+    es: "opciones",
+    de: "Optionen",
+    en: "options",
+  },
   "transport.random": {
     es: "aleatorio",
     de: "zufällig",
