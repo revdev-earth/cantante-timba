@@ -634,7 +634,7 @@ export default function Home() {
 
 
   const canPlay = mode === "metronome" || !!songName;
-  const visibleCall = currentCall ?? upcomingCall;
+  const visibleCall = upcomingCall ?? currentCall;
   const visibleDuration = visibleCall
     ? (durations[visibleCall] ?? figureDuration(visibleCall))
     : null;
@@ -808,13 +808,13 @@ export default function Home() {
             {/* una sola lista que decrece: el actual grande, los que siguen más chicos */}
             <div className="flex w-full max-w-5xl flex-col items-center">
               <h2 className="font-call min-h-[1.1em] text-7xl leading-none text-balance sm:text-8xl md:text-9xl">
-                {currentCall ? (
-                  <span className="bg-linear-to-r from-rosa via-flame to-mango bg-clip-text text-transparent">
-                    {displayFigureName(currentCall)}
-                  </span>
-                ) : upcomingCall ? (
+                {upcomingCall ? (
                   <span className="text-hueso/35">
                     {displayFigureName(upcomingCall)}
+                  </span>
+                ) : currentCall ? (
+                  <span className="bg-linear-to-r from-rosa via-flame to-mango bg-clip-text text-transparent">
+                    {displayFigureName(currentCall)}
                   </span>
                 ) : (
                   <span className="text-hueso/15">{idleLabel}</span>
