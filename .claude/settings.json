@@ -20,7 +20,9 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(grep -n \"siguen\\\\|intensidad\\\\|voz\\\\|clave\\\\|figuras\\\\|tiempo ×\\\\|todas\\\\|ninguna\\\\|combinaciones\\\\|tempo ·\\\\|tempo$\\\\|>tempo<\\\\|auto<\\\\|>voz<\\\\|>clave<\" /Users/rev/dev/timba-cantante/app/page.tsx)",
       "Bash(xxd)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(awk -F: '$2>590 && $2<900')",
+      "Bash(awk 'NR>=590 && NR<=900 && \\(/set[A-Z]/ || /onChange\\\\\\(/ || /onSet/\\)' /Users/rev/dev/timba-cantante/components/bubble-graph.tsx)"
     ]
   }
 }

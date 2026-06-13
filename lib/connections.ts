@@ -515,12 +515,26 @@ export function organizeGraph(graph: ConnectionGraph): ConnectionGraph {
 
 export const NODE_SIZE = { width: NODE_W, height: NODE_H };
 
+/** Límite de seguridad: ninguna burbuja puede estar más lejos que esto del
+ * origen. Evita que una coordenada corrupta haga un canvas gigante (OOM). */
+const COORD_LIMIT = 12000;
+const MAX_CANVAS = 16000;
+
 export function canvasBounds(positions: Record<string, Point>) {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = 0;
   let maxY = 0;
   for (const p of Object.values(positions)) {
+    // ignorar posiciones no finitas o absurdas (localStorage corrupto)
+    if (
+      !Number.isFinite(p.x) ||
+      !Number.isFinite(p.y) ||
+      Math.abs(p.x) > COORD_LIMIT ||
+      Math.abs(p.y) > COORD_LIMIT
+    ) {
+      continue;
+    }
     minX = Math.min(minX, p.x);
     minY = Math.min(minY, p.y);
     maxX = Math.max(maxX, p.x + NODE_W);
@@ -529,13 +543,24 @@ export function canvasBounds(positions: Record<string, Point>) {
   if (!isFinite(minX)) {
     minX = 0;
     minY = 0;
+    maxX = 320;
+    maxY = 360;
   }
   const pad = 220;
   return {
-    width: maxX - minX + pad * 2,
-    height: maxY - minY + pad * 2,
+    width: Math.min(MAX_CANVAS, maxX - minX + pad * 2),
+    height: Math.min(MAX_CANVAS, maxY - minY + pad * 2),
     offsetX: pad - minX,
     offsetY: pad - minY,
+  };
+}
+
+/** Posición válida y dentro de rango, o null si está corrupta. */
+function sanitizePoint(p: Point | undefined): Point | null {
+  if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
+  return {
+    x: Math.max(-COORD_LIMIT, Math.min(COORD_LIMIT, p.x)),
+    y: Math.max(-COORD_LIMIT, Math.min(COORD_LIMIT, p.y)),
   };
 }
 
@@ -546,8 +571,13 @@ export function loadGraph(): ConnectionGraph {
     const raw = localStorage.getItem(CONNECTIONS_STORAGE_KEY);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw) as ConnectionGraph;
-    // built-in figures always present; custom ones come from storage
-    const positions = { ...fallback.positions, ...parsed.positions };
+    // built-in figures always present; custom ones come from storage,
+    // saneando cada posición (descarta NaN/Infinity/coordenadas absurdas)
+    const positions: Record<string, Point> = { ...fallback.positions };
+    for (const [figure, point] of Object.entries(parsed.positions ?? {})) {
+      const safe = sanitizePoint(point);
+      if (safe) positions[figure] = safe;
+    }
     const known = new Set(Object.keys(positions));
     const edges = (parsed.edges ?? []).filter(
       (e) => known.has(e.from) && known.has(e.to),
