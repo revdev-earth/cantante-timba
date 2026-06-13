@@ -289,24 +289,22 @@ export default function BubbleGraph({
     const el = containerRef.current;
     if (!el) return;
 
-    const touchDist = (touches: TouchList) =>
-      Math.hypot(
-        touches[0].clientX - touches[1].clientX,
-        touches[0].clientY - touches[1].clientY,
-      );
+    const touchDist = (a: Touch, b: Touch) =>
+      Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1;
 
     const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length !== 2) return;
-      e.preventDefault();
+      const a = e.touches[0];
+      const b = e.touches[1];
+      if (e.touches.length !== 2 || !a || !b) return;
       // cancelar selección/arrastre en curso: el gesto pasó a ser zoom
       interactionRef.current = null;
       setDragging(null);
       const rect = el.getBoundingClientRect();
-      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const s = scaleRef.current;
+      const midX = (a.clientX + b.clientX) / 2;
+      const midY = (a.clientY + b.clientY) / 2;
+      const s = scaleRef.current || 1;
       pinchRef.current = {
-        dist: touchDist(e.touches),
+        dist: touchDist(a, b),
         scale: s,
         cx: (midX - rect.left + el.scrollLeft) / s,
         cy: (midY - rect.top + el.scrollTop) / s,
@@ -315,20 +313,19 @@ export default function BubbleGraph({
 
     const onTouchMove = (e: TouchEvent) => {
       const pinch = pinchRef.current;
-      if (!pinch || e.touches.length < 2) return;
-      e.preventDefault();
+      const a = e.touches[0];
+      const b = e.touches[1];
+      if (!pinch || !a || !b) return;
+      e.preventDefault(); // solo cuando hay pinch activo: bloquea zoom de página
       const rect = el.getBoundingClientRect();
-      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const next = clampScale(
-        (pinch.scale * touchDist(e.touches)) / pinch.dist,
-      );
+      const midX = (a.clientX + b.clientX) / 2;
+      const midY = (a.clientY + b.clientY) / 2;
+      const next = clampScale((pinch.scale * touchDist(a, b)) / pinch.dist);
+      if (!Number.isFinite(next)) return;
       scaleRef.current = next;
       setScale(next);
-      requestAnimationFrame(() => {
-        el.scrollLeft = pinch.cx * next - (midX - rect.left);
-        el.scrollTop = pinch.cy * next - (midY - rect.top);
-      });
+      el.scrollLeft = pinch.cx * next - (midX - rect.left);
+      el.scrollTop = pinch.cy * next - (midY - rect.top);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
